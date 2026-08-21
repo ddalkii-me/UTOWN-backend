@@ -1,22 +1,26 @@
 package com.utown.utownbackend.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_item_options")
-public class OrderItemOption {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderItemOption extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_item_id", nullable = false)
     private OrderItem orderItem;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dish_option_id", nullable = false)
     private DishOption dishOption;
 
@@ -26,58 +30,4 @@ public class OrderItemOption {
     @Column(name = "option_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal optionPrice;
 
-    public OrderItemOption() {
-    }
-
-    public OrderItemOption(
-            OrderItem orderItem,
-            DishOption dishOption,
-            String optionName,
-            BigDecimal optionPrice
-    ) {
-        this.orderItem = orderItem;
-        this.dishOption = dishOption;
-        this.optionName = optionName;
-        this.optionPrice = optionPrice;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public OrderItem getOrderItem() {
-        return orderItem;
-    }
-
-    public void setOrderItem(OrderItem orderItem) {
-        this.orderItem = orderItem;
-    }
-
-    public DishOption getDishOption() {
-        return dishOption;
-    }
-
-    public void setDishOption(DishOption dishOption) {
-        this.dishOption = dishOption;
-    }
-
-    public String getOptionName() {
-        return optionName;
-    }
-
-    public void setOptionName(String optionName) {
-        this.optionName = optionName;
-    }
-
-    public BigDecimal getOptionPrice() {
-        return optionPrice;
-    }
-
-    public void setOptionPrice(BigDecimal optionPrice) {
-        this.optionPrice = optionPrice;
-    }
 }

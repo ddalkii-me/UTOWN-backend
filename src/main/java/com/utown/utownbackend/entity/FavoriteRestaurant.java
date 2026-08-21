@@ -1,6 +1,10 @@
 package com.utown.utownbackend.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -11,65 +15,18 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(columnNames = {"user_id", "restaurant_id"})
         }
 )
-public class FavoriteRestaurant {
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class FavoriteRestaurant extends BaseEntity{
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    public FavoriteRestaurant() {
-    }
-
-    public FavoriteRestaurant(
-            User user,
-            Restaurant restaurant,
-            LocalDateTime createdAt
-    ) {
-        this.user = user;
-        this.restaurant = restaurant;
-        this.createdAt = createdAt;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public Restaurant getRestaurant() {
-        return restaurant;
-    }
-
-    public void setRestaurant(Restaurant restaurant) {
-        this.restaurant = restaurant;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
 }

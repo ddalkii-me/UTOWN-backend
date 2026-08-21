@@ -1,29 +1,24 @@
 package com.utown.utownbackend.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "delivery_area")
-public class DeliveryArea {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class DeliveryArea extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id", nullable = false)
     private City city;
 
     @Column(nullable = false)
     private String name;
 
-    public DeliveryArea() {
-    }
-
-    public DeliveryArea(City city, String name) {
-        this.city = city;
-        this.name = name;
-    }
-
-    // getters and setters
 }
