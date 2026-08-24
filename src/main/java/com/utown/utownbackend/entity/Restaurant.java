@@ -18,15 +18,15 @@ import java.time.LocalDateTime;
 public class Restaurant extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
+    @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "type_id")
+    @JoinColumn(name = "type_id", nullable = false)
     private RestaurantType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "city_id")
+    @JoinColumn(name = "city_id", nullable = false)
     private City city;
 
     @Column(nullable = false)

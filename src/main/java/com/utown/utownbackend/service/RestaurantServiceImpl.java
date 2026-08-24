@@ -54,21 +54,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 
         Restaurant savedRestaurant = restaurantRepository.save(restaurant);
 
-        return new RestaurantResponseDto(
-                savedRestaurant.getId(),
-                savedRestaurant.getOwner().getId(),
-                savedRestaurant.getType().getId(),
-                savedRestaurant.getCity().getId(),
-                savedRestaurant.getName(),
-                savedRestaurant.getDescription(),
-                savedRestaurant.getAddress(),
-                savedRestaurant.getPhone(),
-                savedRestaurant.getLogoUrl(),
-                savedRestaurant.getLatitude(),
-                savedRestaurant.getLongitude(),
-                savedRestaurant.getMinimumOrderAmount(),
-                savedRestaurant.getStatus()
-        );
+        return toDto(savedRestaurant);
     }
 
     @Override
@@ -78,21 +64,7 @@ public class RestaurantServiceImpl implements RestaurantService {
                 restaurantRepository.findAllByDeletedAtIsNull();
 
         return restaurants.stream()
-                .map(restaurant -> new RestaurantResponseDto(
-                        restaurant.getId(),
-                        restaurant.getOwner().getId(),
-                        restaurant.getType().getId(),
-                        restaurant.getCity().getId(),
-                        restaurant.getName(),
-                        restaurant.getDescription(),
-                        restaurant.getAddress(),
-                        restaurant.getPhone(),
-                        restaurant.getLogoUrl(),
-                        restaurant.getLatitude(),
-                        restaurant.getLongitude(),
-                        restaurant.getMinimumOrderAmount(),
-                        restaurant.getStatus()
-                ))
+                .map(this::toDto)
                 .toList();
     }
 
@@ -101,21 +73,7 @@ public class RestaurantServiceImpl implements RestaurantService {
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        return new RestaurantResponseDto(
-                restaurant.getId(),
-                restaurant.getOwner().getId(),
-                restaurant.getType().getId(),
-                restaurant.getCity().getId(),
-                restaurant.getName(),
-                restaurant.getDescription(),
-                restaurant.getAddress(),
-                restaurant.getPhone(),
-                restaurant.getLogoUrl(),
-                restaurant.getLatitude(),
-                restaurant.getLongitude(),
-                restaurant.getMinimumOrderAmount(),
-                restaurant.getStatus()
-        );
+        return toDto(restaurant);
     }
 
     @Override
@@ -123,7 +81,7 @@ public class RestaurantServiceImpl implements RestaurantService {
             Long id,
             RestaurantRequestDto request) {
 
-        Restaurant restaurant = restaurantRepository.findById(id)
+        Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
         User owner = userRepository.findById(request.getOwnerId())
@@ -150,21 +108,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 
         Restaurant updatedRestaurant = restaurantRepository.save(restaurant);
 
-        return new RestaurantResponseDto(
-                updatedRestaurant.getId(),
-                updatedRestaurant.getOwner().getId(),
-                updatedRestaurant.getType().getId(),
-                updatedRestaurant.getCity().getId(),
-                updatedRestaurant.getName(),
-                updatedRestaurant.getDescription(),
-                updatedRestaurant.getAddress(),
-                updatedRestaurant.getPhone(),
-                updatedRestaurant.getLogoUrl(),
-                updatedRestaurant.getLatitude(),
-                updatedRestaurant.getLongitude(),
-                updatedRestaurant.getMinimumOrderAmount(),
-                updatedRestaurant.getStatus()
-        );
+        return toDto(updatedRestaurant);
     }
 
     @Override
@@ -176,5 +120,23 @@ public class RestaurantServiceImpl implements RestaurantService {
         restaurant.setDeletedAt(LocalDateTime.now());
 
         restaurantRepository.save(restaurant);
+    }
+
+    private RestaurantResponseDto toDto(Restaurant restaurant) {
+        return new RestaurantResponseDto(
+                restaurant.getId(),
+                restaurant.getOwner().getId(),
+                restaurant.getType().getId(),
+                restaurant.getCity().getId(),
+                restaurant.getName(),
+                restaurant.getDescription(),
+                restaurant.getAddress(),
+                restaurant.getPhone(),
+                restaurant.getLogoUrl(),
+                restaurant.getLatitude(),
+                restaurant.getLongitude(),
+                restaurant.getMinimumOrderAmount(),
+                restaurant.getStatus()
+        );
     }
 }
