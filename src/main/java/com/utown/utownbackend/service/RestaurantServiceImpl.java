@@ -28,13 +28,13 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public RestaurantResponseDto createRestaurant(RestaurantRequestDto request) {
 
-        User owner = userRepository.findById(request.getOwnerId())
+        User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new RuntimeException("Owner not found"));
 
-        RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.getCityId())
+        City city = cityRepository.findById(request.cityId())
                 .orElseThrow(() -> new RuntimeException("City not found"));
 
         Restaurant restaurant = new Restaurant();
@@ -42,15 +42,15 @@ public class RestaurantServiceImpl implements RestaurantService {
         restaurant.setOwner(owner);
         restaurant.setType(type);
         restaurant.setCity(city);
-        restaurant.setName(request.getName());
-        restaurant.setDescription(request.getDescription());
-        restaurant.setAddress(request.getAddress());
-        restaurant.setPhone(request.getPhone());
-        restaurant.setLogoUrl(request.getLogoUrl());
-        restaurant.setLatitude(request.getLatitude());
-        restaurant.setLongitude(request.getLongitude());
-        restaurant.setMinimumOrderAmount(request.getMinimumOrderAmount());
-        restaurant.setStatus(request.getStatus());
+        restaurant.setName(request.name());
+        restaurant.setDescription(request.description());
+        restaurant.setAddress(request.address());
+        restaurant.setPhone(request.phone());
+        restaurant.setLogoUrl(request.logoUrl());
+        restaurant.setLatitude(request.latitude());
+        restaurant.setLongitude(request.longitude());
+        restaurant.setMinimumOrderAmount(request.minimumOrderAmount());
+        restaurant.setStatus(request.status());
 
         Restaurant savedRestaurant = restaurantRepository.save(restaurant);
 
@@ -84,27 +84,27 @@ public class RestaurantServiceImpl implements RestaurantService {
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        User owner = userRepository.findById(request.getOwnerId())
+        User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new RuntimeException("Owner not found"));
 
-        RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.getCityId())
+        City city = cityRepository.findById(request.cityId())
                 .orElseThrow(() -> new RuntimeException("City not found"));
 
         restaurant.setOwner(owner);
         restaurant.setType(type);
         restaurant.setCity(city);
-        restaurant.setName(request.getName());
-        restaurant.setDescription(request.getDescription());
-        restaurant.setAddress(request.getAddress());
-        restaurant.setPhone(request.getPhone());
-        restaurant.setLogoUrl(request.getLogoUrl());
-        restaurant.setLatitude(request.getLatitude());
-        restaurant.setLongitude(request.getLongitude());
-        restaurant.setMinimumOrderAmount(request.getMinimumOrderAmount());
-        restaurant.setStatus(request.getStatus());
+        restaurant.setName(request.name());
+        restaurant.setDescription(request.description());
+        restaurant.setAddress(request.address());
+        restaurant.setPhone(request.phone());
+        restaurant.setLogoUrl(request.logoUrl());
+        restaurant.setLatitude(request.latitude());
+        restaurant.setLongitude(request.longitude());
+        restaurant.setMinimumOrderAmount(request.minimumOrderAmount());
+        restaurant.setStatus(request.status());
 
         Restaurant updatedRestaurant = restaurantRepository.save(restaurant);
 

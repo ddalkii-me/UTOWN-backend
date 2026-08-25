@@ -1,19 +1,7 @@
 package com.utown.utownbackend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class CategoryRequestDto {
-
-    private Long restaurantId;
-
-    private String name;
-
-    private String description;
-}
+public record CategoryRequestDto(
+        Long restaurantId,
+        String name,
+        String description
+) {}

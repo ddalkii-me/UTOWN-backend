@@ -21,13 +21,13 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
         Category category = new Category();
         category.setRestaurant(restaurant);
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setDescription(request.description());
 
         Category savedCategory = categoryRepository.save(category);
 
@@ -76,12 +76,12 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
         category.setRestaurant(restaurant);
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setDescription(request.description());
 
         Category updatedCategory = categoryRepository.save(category);
 
