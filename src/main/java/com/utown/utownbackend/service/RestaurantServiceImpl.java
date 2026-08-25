@@ -10,6 +10,7 @@ import com.utown.utownbackend.repository.CityRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
 import com.utown.utownbackend.repository.RestaurantTypeRepository;
 import com.utown.utownbackend.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,13 +30,13 @@ public class RestaurantServiceImpl implements RestaurantService {
     public RestaurantResponseDto createRestaurant(RestaurantRequestDto request) {
 
         User owner = userRepository.findById(request.getOwnerId())
-                .orElseThrow(() -> new RuntimeException("Owner not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
 
         RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
-                .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
         City city = cityRepository.findById(request.getCityId())
-                .orElseThrow(() -> new RuntimeException("City not found"));
+                .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         Restaurant restaurant = new Restaurant();
 
@@ -71,7 +72,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public RestaurantResponseDto getRestaurantById(Long id) {
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         return toDto(restaurant);
     }
@@ -82,16 +83,16 @@ public class RestaurantServiceImpl implements RestaurantService {
             RestaurantRequestDto request) {
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         User owner = userRepository.findById(request.getOwnerId())
-                .orElseThrow(() -> new RuntimeException("Owner not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
 
         RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
-                .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
         City city = cityRepository.findById(request.getCityId())
-                .orElseThrow(() -> new RuntimeException("City not found"));
+                .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         restaurant.setOwner(owner);
         restaurant.setType(type);
@@ -115,7 +116,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     public void deleteRestaurant(Long id) {
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         restaurant.setDeletedAt(LocalDateTime.now());
 

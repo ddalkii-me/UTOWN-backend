@@ -6,6 +6,7 @@ import com.utown.utownbackend.entity.Category;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.repository.CategoryRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,7 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         Category category = new Category();
         category.setRestaurant(restaurant);
@@ -58,7 +59,7 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryResponseDto getCategoryById(Long id) {
 
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         return new CategoryResponseDto(
                 category.getId(),
@@ -74,10 +75,10 @@ public class CategoryServiceImpl implements CategoryService {
             CategoryRequestDto request) {
 
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         category.setRestaurant(restaurant);
         category.setName(request.getName());
@@ -97,7 +98,7 @@ public class CategoryServiceImpl implements CategoryService {
     public void deleteCategory(Long id) {
 
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         categoryRepository.delete(category);
     }
