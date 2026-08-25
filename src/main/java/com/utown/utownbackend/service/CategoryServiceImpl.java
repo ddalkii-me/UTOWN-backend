@@ -8,16 +8,19 @@ import com.utown.utownbackend.repository.CategoryRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final RestaurantRepository restaurantRepository;
 
+    @Transactional
     @Override
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
@@ -68,6 +71,7 @@ public class CategoryServiceImpl implements CategoryService {
         );
     }
 
+    @Transactional
     @Override
     public CategoryResponseDto updateCategory(
             Long id,
@@ -93,6 +97,7 @@ public class CategoryServiceImpl implements CategoryService {
         );
     }
 
+    @Transactional
     @Override
     public void deleteCategory(Long id) {
 

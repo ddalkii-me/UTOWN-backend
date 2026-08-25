@@ -12,12 +12,14 @@ import com.utown.utownbackend.repository.RestaurantTypeRepository;
 import com.utown.utownbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RestaurantServiceImpl implements RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
@@ -25,6 +27,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     private final RestaurantTypeRepository restaurantTypeRepository;
     private final CityRepository cityRepository;
 
+    @Transactional
     @Override
     public RestaurantResponseDto createRestaurant(RestaurantRequestDto request) {
 
@@ -76,6 +79,7 @@ public class RestaurantServiceImpl implements RestaurantService {
         return toDto(restaurant);
     }
 
+    @Transactional
     @Override
     public RestaurantResponseDto updateRestaurant(
             Long id,
@@ -111,6 +115,7 @@ public class RestaurantServiceImpl implements RestaurantService {
         return toDto(updatedRestaurant);
     }
 
+    @Transactional
     @Override
     public void deleteRestaurant(Long id) {
 
