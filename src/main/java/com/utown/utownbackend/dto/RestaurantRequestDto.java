@@ -1,14 +1,16 @@
 package com.utown.utownbackend.dto;
 
 import com.utown.utownbackend.entity.RestaurantStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
 public record RestaurantRequestDto(
-        Long ownerId,
-        Long typeId,
-        Long cityId,
-        String name,
+        @NotNull Long ownerId,
+        @NotNull Long typeId,
+        @NotNull Long cityId,
+        @NotBlank String name,
         String description,
         String address,
         String phone,
@@ -16,5 +18,5 @@ public record RestaurantRequestDto(
         BigDecimal latitude,
         BigDecimal longitude,
         BigDecimal minimumOrderAmount,
-        RestaurantStatus status
+        @NotNull RestaurantStatus status
 ) {}

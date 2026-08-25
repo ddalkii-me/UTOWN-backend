@@ -3,6 +3,7 @@ package com.utown.utownbackend.controller;
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.RestaurantResponseDto;
 import com.utown.utownbackend.service.RestaurantService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class RestaurantController {
 
     @PostMapping
     public ResponseEntity<RestaurantResponseDto> createRestaurant(
-            @RequestBody RestaurantRequestDto request) {
+            @Valid @RequestBody RestaurantRequestDto request) {
 
         RestaurantResponseDto response =
                 restaurantService.createRestaurant(request);
@@ -48,7 +49,7 @@ public class RestaurantController {
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantResponseDto> updateRestaurant(
             @PathVariable Long id,
-            @RequestBody RestaurantRequestDto request) {
+            @Valid @RequestBody RestaurantRequestDto request) {
 
         RestaurantResponseDto response =
                 restaurantService.updateRestaurant(id, request);
