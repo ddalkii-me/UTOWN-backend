@@ -9,6 +9,7 @@ import com.utown.utownbackend.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -42,7 +43,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public List<CategoryResponseDto> getAllCategories() {
 
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAllByDeletedAtIsNull();
 
         return categories.stream()
                 .map(category -> new CategoryResponseDto(
@@ -57,7 +58,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponseDto getCategoryById(Long id) {
 
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         return new CategoryResponseDto(
@@ -73,7 +74,7 @@ public class CategoryServiceImpl implements CategoryService {
             Long id,
             CategoryRequestDto request) {
 
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
@@ -96,9 +97,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void deleteCategory(Long id) {
 
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        categoryRepository.delete(category);
+        category.setDeletedAt(LocalDateTime.now());
+
+        categoryRepository.save(category);
     }
 }
