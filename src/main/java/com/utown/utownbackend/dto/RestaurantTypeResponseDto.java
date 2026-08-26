@@ -1,8 +1,8 @@
 package com.utown.utownbackend.dto;
 
-public record CategoryResponseDto(
+
+public record RestaurantTypeResponseDto(
         Long id,
-        Long restaurantId,
         String name,
         String description
-) {}
+) { }

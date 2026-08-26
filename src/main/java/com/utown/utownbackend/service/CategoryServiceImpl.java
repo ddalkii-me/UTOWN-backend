@@ -6,29 +6,33 @@ import com.utown.utownbackend.entity.Category;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.repository.CategoryRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final RestaurantRepository restaurantRepository;
 
+    @Transactional
     @Override
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         Category category = new Category();
         category.setRestaurant(restaurant);
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setDescription(request.description());
 
         Category savedCategory = categoryRepository.save(category);
 
@@ -58,8 +62,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponseDto getCategoryById(Long id) {
 
-        Category category = categoryRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         return new CategoryResponseDto(
                 category.getId(),
@@ -69,20 +73,21 @@ public class CategoryServiceImpl implements CategoryService {
         );
     }
 
+    @Transactional
     @Override
     public CategoryResponseDto updateCategory(
             Long id,
             CategoryRequestDto request) {
 
-        Category category = categoryRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         category.setRestaurant(restaurant);
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setDescription(request.description());
 
         Category updatedCategory = categoryRepository.save(category);
 
@@ -94,11 +99,12 @@ public class CategoryServiceImpl implements CategoryService {
         );
     }
 
+    @Transactional
     @Override
     public void deleteCategory(Long id) {
 
-        Category category = categoryRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
         category.setDeletedAt(LocalDateTime.now());
 

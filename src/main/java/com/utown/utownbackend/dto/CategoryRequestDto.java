@@ -1,19 +1,10 @@
 package com.utown.utownbackend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class CategoryRequestDto {
-
-    private Long restaurantId;
-
-    private String name;
-
-    private String description;
-}
+public record CategoryRequestDto(
+        @NotNull Long restaurantId,
+        @NotBlank String name,
+        String description
+) {}
