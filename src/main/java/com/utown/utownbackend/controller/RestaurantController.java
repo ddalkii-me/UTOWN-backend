@@ -2,7 +2,10 @@ package com.utown.utownbackend.controller;
 
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.RestaurantResponseDto;
+import com.utown.utownbackend.dto.WorkingHoursDto;
 import com.utown.utownbackend.service.RestaurantService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +31,7 @@ public class RestaurantController {
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
+
     @GetMapping
     public ResponseEntity<List<RestaurantResponseDto>> getAllRestaurants() {
 
@@ -36,6 +40,7 @@ public class RestaurantController {
 
         return ResponseEntity.ok(restaurants);
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<RestaurantResponseDto> getRestaurantById(
             @PathVariable Long id) {
@@ -45,6 +50,25 @@ public class RestaurantController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{id}/working-hours")
+    public ResponseEntity<List<WorkingHoursDto>> getWorkingHoursById(
+            @PathVariable Long id
+    ) {
+        List<WorkingHoursDto> response = restaurantService.getWorkingHours(id);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/working-hours")
+    public ResponseEntity<Void> putWorkingHoursById(
+            @PathVariable Long id,
+            @Valid @RequestBody List<WorkingHoursDto> request
+    ) {
+        restaurantService.updateWorkingHours(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<RestaurantResponseDto> updateRestaurant(
             @PathVariable Long id,
@@ -55,6 +79,7 @@ public class RestaurantController {
 
         return ResponseEntity.ok(response);
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRestaurant(
             @PathVariable Long id) {
