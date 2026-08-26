@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.RestaurantTypeRequestDto;
 import com.utown.utownbackend.dto.RestaurantTypeResponseDto;
 import com.utown.utownbackend.entity.RestaurantType;
 import com.utown.utownbackend.repository.RestaurantTypeRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +22,8 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
 
         RestaurantType restaurantType = new RestaurantType();
 
-        restaurantType.setName(request.getName());
-        restaurantType.setDescription(request.getDescription());
+        restaurantType.setName(request.name());
+        restaurantType.setDescription(request.description());
 
         RestaurantType savedRestaurantType =
                 restaurantTypeRepository.save(restaurantType);
@@ -45,7 +46,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
     public RestaurantTypeResponseDto getRestaurantTypeById(Long id) {
 
         RestaurantType restaurantType = restaurantTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
         return toDto(restaurantType);
     }
@@ -56,10 +57,10 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
             RestaurantTypeRequestDto request) {
 
         RestaurantType restaurantType = restaurantTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        restaurantType.setName(request.getName());
-        restaurantType.setDescription(request.getDescription());
+        restaurantType.setName(request.name());
+        restaurantType.setDescription(request.description());
 
         RestaurantType updatedRestaurantType =
                 restaurantTypeRepository.save(restaurantType);
@@ -71,7 +72,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
     public void deleteRestaurantType(Long id) {
 
         RestaurantType restaurantType = restaurantTypeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant type not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
         restaurantTypeRepository.delete(restaurantType);
     }
