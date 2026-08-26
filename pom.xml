@@ -11,9 +11,8 @@
 	<groupId>com.utown</groupId>
 	<artifactId>utown-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
+	<name>UTown Backend</name>
+	<description>Food delivery platform backend for the UTown project</description>
 	<licenses>
 		<license/>
 	</licenses>
