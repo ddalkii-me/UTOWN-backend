@@ -30,8 +30,8 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category category = new Category();
         category.setRestaurant(restaurant);
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setDescription(request.description());
 
         Category savedCategory = categoryRepository.save(category);
 
@@ -85,8 +85,8 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         category.setRestaurant(restaurant);
-        category.setName(request.getName());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setDescription(request.description());
 
         Category updatedCategory = categoryRepository.save(category);
 

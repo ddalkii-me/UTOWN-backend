@@ -3,6 +3,7 @@ package com.utown.utownbackend.controller;
 import com.utown.utownbackend.dto.CategoryRequestDto;
 import com.utown.utownbackend.dto.CategoryResponseDto;
 import com.utown.utownbackend.service.CategoryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<CategoryResponseDto> createCategory(
-            @RequestBody CategoryRequestDto request) {
+            @Valid @RequestBody CategoryRequestDto request) {
 
         CategoryResponseDto response = categoryService.createCategory(request);
 
@@ -45,7 +46,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     public ResponseEntity<CategoryResponseDto> updateCategory(
             @PathVariable Long id,
-            @RequestBody CategoryRequestDto request) {
+            @Valid @RequestBody CategoryRequestDto request) {
 
         CategoryResponseDto response =
                 categoryService.updateCategory(id, request);

@@ -46,15 +46,15 @@ public class RestaurantServiceImpl implements RestaurantService {
         restaurant.setOwner(owner);
         restaurant.setType(type);
         restaurant.setCity(city);
-        restaurant.setName(request.getName());
-        restaurant.setDescription(request.getDescription());
-        restaurant.setAddress(request.getAddress());
-        restaurant.setPhone(request.getPhone());
-        restaurant.setLogoUrl(request.getLogoUrl());
-        restaurant.setLatitude(request.getLatitude());
-        restaurant.setLongitude(request.getLongitude());
-        restaurant.setMinimumOrderAmount(request.getMinimumOrderAmount());
-        restaurant.setStatus(request.getStatus());
+        restaurant.setName(request.name());
+        restaurant.setDescription(request.description());
+        restaurant.setAddress(request.address());
+        restaurant.setPhone(request.phone());
+        restaurant.setLogoUrl(request.logoUrl());
+        restaurant.setLatitude(request.latitude());
+        restaurant.setLongitude(request.longitude());
+        restaurant.setMinimumOrderAmount(request.minimumOrderAmount());
+        restaurant.setStatus(request.status());
 
         Restaurant savedRestaurant = restaurantRepository.save(restaurant);
 
@@ -101,15 +101,15 @@ public class RestaurantServiceImpl implements RestaurantService {
         restaurant.setOwner(owner);
         restaurant.setType(type);
         restaurant.setCity(city);
-        restaurant.setName(request.getName());
-        restaurant.setDescription(request.getDescription());
-        restaurant.setAddress(request.getAddress());
-        restaurant.setPhone(request.getPhone());
-        restaurant.setLogoUrl(request.getLogoUrl());
-        restaurant.setLatitude(request.getLatitude());
-        restaurant.setLongitude(request.getLongitude());
-        restaurant.setMinimumOrderAmount(request.getMinimumOrderAmount());
-        restaurant.setStatus(request.getStatus());
+        restaurant.setName(request.name());
+        restaurant.setDescription(request.description());
+        restaurant.setAddress(request.address());
+        restaurant.setPhone(request.phone());
+        restaurant.setLogoUrl(request.logoUrl());
+        restaurant.setLatitude(request.latitude());
+        restaurant.setLongitude(request.longitude());
+        restaurant.setMinimumOrderAmount(request.minimumOrderAmount());
+        restaurant.setStatus(request.status());
 
         Restaurant updatedRestaurant = restaurantRepository.save(restaurant);
 
