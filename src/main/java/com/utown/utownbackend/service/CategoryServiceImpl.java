@@ -25,7 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         Category category = new Category();
@@ -81,7 +81,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         category.setRestaurant(restaurant);

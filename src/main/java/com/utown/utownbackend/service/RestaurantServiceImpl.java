@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,13 +29,13 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public RestaurantResponseDto createRestaurant(RestaurantRequestDto request) {
 
-        User owner = userRepository.findById(request.getOwnerId())
+        User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
 
-        RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.getCityId())
+        City city = cityRepository.findById(request.cityId())
                 .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         Restaurant restaurant = new Restaurant();
@@ -85,13 +86,13 @@ public class RestaurantServiceImpl implements RestaurantService {
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
-        User owner = userRepository.findById(request.getOwnerId())
+        User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
 
-        RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.getCityId())
+        City city = cityRepository.findById(request.cityId())
                 .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         restaurant.setOwner(owner);
@@ -126,27 +127,21 @@ public class RestaurantServiceImpl implements RestaurantService {
 
     @Transactional
     @Override
-    public void updateWorkingHours(Long restaurantId, List<WorkingHoursDto> hours) {
+    public void updateWorkingHourForDay(Long restaurantId, DayOfWeek dayOfWeek, WorkingHoursDto dto) {
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
-        workingHoursRepository.deleteByRestaurantId(restaurantId);
+        RestaurantWorkingHours entity = workingHoursRepository.findByRestaurantIdAndDayOfWeek(restaurantId, dayOfWeek)
+                .orElseGet(RestaurantWorkingHours::new);
 
-        List<RestaurantWorkingHours> entitiesToSave = hours.stream()
-                .map(dto -> {
-                    RestaurantWorkingHours entity = new RestaurantWorkingHours();
-                    entity.setRestaurant(restaurant);
+        entity.setRestaurant(restaurant);
+        entity.setDayOfWeek(dayOfWeek);
+        entity.setOpenTime(dto.openTime());
+        entity.setCloseTime(dto.closeTime());
+        entity.setDayOff(dto.dayOff());
 
-                    entity.setDayOfWeek(dto.dayOfWeek());
-                    entity.setOpenTime(dto.openTime());
-                    entity.setCloseTime(dto.closeTime());
-                    entity.setDayOff(dto.dayOff());
-                    return entity;
-                })
-                .toList();
-
-        workingHoursRepository.saveAll(entitiesToSave);
+        workingHoursRepository.save(entity);
     }
 
 

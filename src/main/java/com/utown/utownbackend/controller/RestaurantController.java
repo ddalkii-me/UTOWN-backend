@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.DayOfWeek;
 import java.util.List;
 
 @RestController
@@ -59,12 +60,13 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/working-hours")
-    public ResponseEntity<Void> putWorkingHoursById(
+    @PutMapping("/{id}/working-hours/{dayOfWeek}")
+    public ResponseEntity<Void> updateWorkingHourForDay(
             @PathVariable Long id,
-            @Valid @RequestBody List<WorkingHoursDto> request
+            @PathVariable DayOfWeek dayOfWeek,
+            @Valid @RequestBody WorkingHoursDto request
     ) {
-        restaurantService.updateWorkingHours(id, request);
+        restaurantService.updateWorkingHourForDay(id, dayOfWeek, request);
         return ResponseEntity.noContent().build();
     }
 
