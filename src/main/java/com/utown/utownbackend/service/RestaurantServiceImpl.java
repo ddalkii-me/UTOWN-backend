@@ -2,19 +2,15 @@ package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.RestaurantResponseDto;
-import com.utown.utownbackend.entity.City;
-import com.utown.utownbackend.entity.Restaurant;
-import com.utown.utownbackend.entity.RestaurantType;
-import com.utown.utownbackend.entity.User;
-import com.utown.utownbackend.repository.CityRepository;
-import com.utown.utownbackend.repository.RestaurantRepository;
-import com.utown.utownbackend.repository.RestaurantTypeRepository;
-import com.utown.utownbackend.repository.UserRepository;
+import com.utown.utownbackend.dto.WorkingHoursDto;
+import com.utown.utownbackend.entity.*;
+import com.utown.utownbackend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,6 +23,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     private final UserRepository userRepository;
     private final RestaurantTypeRepository restaurantTypeRepository;
     private final CityRepository cityRepository;
+    private final RestaurantWorkingHoursRepository workingHoursRepository;
 
     @Transactional
     @Override
@@ -127,6 +124,47 @@ public class RestaurantServiceImpl implements RestaurantService {
 
         restaurantRepository.save(restaurant);
     }
+
+    @Transactional
+    @Override
+    public void updateWorkingHourForDay(Long restaurantId, DayOfWeek dayOfWeek, WorkingHoursDto dto) {
+
+        Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
+
+        RestaurantWorkingHours entity = workingHoursRepository.findByRestaurantIdAndDayOfWeek(restaurantId, dayOfWeek)
+                .orElseGet(RestaurantWorkingHours::new);
+
+        entity.setRestaurant(restaurant);
+        entity.setDayOfWeek(dayOfWeek);
+        entity.setOpenTime(dto.openTime());
+        entity.setCloseTime(dto.closeTime());
+        entity.setDayOff(dto.dayOff());
+
+        workingHoursRepository.save(entity);
+    }
+
+
+    @Override
+    public List<WorkingHoursDto> getWorkingHours(Long restaurantId) {
+
+        restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
+
+        List<RestaurantWorkingHours> entities = workingHoursRepository.findByRestaurantId(restaurantId);
+
+        return entities.stream()
+                .map(entity -> new WorkingHoursDto(
+                        entity.getDayOfWeek(),
+                        entity.getOpenTime(),
+                        entity.getCloseTime(),
+                        entity.isDayOff()
+                ))
+                .toList();
+    }
+
+
+
 
     private RestaurantResponseDto toDto(Restaurant restaurant) {
         return new RestaurantResponseDto(
