@@ -6,5 +6,7 @@ import jakarta.validation.constraints.NotNull;
 public record CategoryRequestDto(
         @NotNull Long restaurantId,
         @NotBlank String name,
-        String description
+        String description,
+        String imageUrl,
+        Integer priority
 ) {}

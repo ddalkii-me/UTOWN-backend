@@ -4,5 +4,7 @@ public record CategoryResponseDto(
         Long id,
         Long restaurantId,
         String name,
-        String description
+        String description,
+        String imageUrl,
+        Integer priority
 ) {}

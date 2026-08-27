@@ -33,6 +33,11 @@ public class Category extends BaseEntity {
 
     private String description;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    private Integer priority;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
