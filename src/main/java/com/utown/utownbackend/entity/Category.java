@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(
         name = "categories",
@@ -30,4 +32,12 @@ public class Category extends BaseEntity {
     private String name;
 
     private String description;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    private Integer priority;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

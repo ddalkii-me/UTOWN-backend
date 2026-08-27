@@ -5,12 +5,15 @@ import com.utown.utownbackend.dto.CategoryResponseDto;
 import com.utown.utownbackend.entity.Category;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.repository.CategoryRepository;
+import com.utown.utownbackend.repository.DishRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
+import com.utown.utownbackend.exception.ResourceConflictException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -20,18 +23,21 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final RestaurantRepository restaurantRepository;
+    private final DishRepository dishRepository;
 
     @Transactional
     @Override
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
 
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         Category category = new Category();
         category.setRestaurant(restaurant);
         category.setName(request.name());
         category.setDescription(request.description());
+        category.setImageUrl(request.imageUrl());
+        category.setPriority(request.priority());
 
         Category savedCategory = categoryRepository.save(category);
 
@@ -39,21 +45,25 @@ public class CategoryServiceImpl implements CategoryService {
                 savedCategory.getId(),
                 savedCategory.getRestaurant().getId(),
                 savedCategory.getName(),
-                savedCategory.getDescription()
+                savedCategory.getDescription(),
+                savedCategory.getImageUrl(),
+                savedCategory.getPriority()
         );
     }
 
     @Override
     public List<CategoryResponseDto> getAllCategories() {
 
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAllByDeletedAtIsNull();
 
         return categories.stream()
                 .map(category -> new CategoryResponseDto(
                         category.getId(),
                         category.getRestaurant().getId(),
                         category.getName(),
-                        category.getDescription()
+                        category.getDescription(),
+                        category.getImageUrl(),
+                        category.getPriority()
                 ))
                 .toList();
     }
@@ -68,7 +78,9 @@ public class CategoryServiceImpl implements CategoryService {
                 category.getId(),
                 category.getRestaurant().getId(),
                 category.getName(),
-                category.getDescription()
+                category.getDescription(),
+                category.getImageUrl(),
+                category.getPriority()
         );
     }
 
@@ -81,12 +93,14 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+        Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
         category.setRestaurant(restaurant);
         category.setName(request.name());
         category.setDescription(request.description());
+        category.setImageUrl(request.imageUrl());
+        category.setPriority(request.priority());
 
         Category updatedCategory = categoryRepository.save(category);
 
@@ -94,7 +108,9 @@ public class CategoryServiceImpl implements CategoryService {
                 updatedCategory.getId(),
                 updatedCategory.getRestaurant().getId(),
                 updatedCategory.getName(),
-                updatedCategory.getDescription()
+                updatedCategory.getDescription(),
+                updatedCategory.getImageUrl(),
+                updatedCategory.getPriority()
         );
     }
 
@@ -105,6 +121,12 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
-        categoryRepository.delete(category);
+        if (dishRepository.existsByCategoryIdAndDeletedAtIsNull(id)) {
+            throw new ResourceConflictException("Cannot delete category because it still has active dishes.");
+        }
+
+        category.setDeletedAt(LocalDateTime.now());
+
+        categoryRepository.save(category);
     }
 }

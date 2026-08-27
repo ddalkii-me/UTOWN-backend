@@ -32,13 +32,13 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public RestaurantResponseDto createRestaurant(RestaurantRequestDto request) {
 
-        User owner = userRepository.findById(request.getOwnerId())
+        User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
 
-        RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.getCityId())
+        City city = cityRepository.findById(request.cityId())
                 .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         Restaurant restaurant = new Restaurant();
@@ -89,13 +89,13 @@ public class RestaurantServiceImpl implements RestaurantService {
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
-        User owner = userRepository.findById(request.getOwnerId())
+        User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
 
-        RestaurantType type = restaurantTypeRepository.findById(request.getTypeId())
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.getCityId())
+        City city = cityRepository.findById(request.cityId())
                 .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         restaurant.setOwner(owner);
