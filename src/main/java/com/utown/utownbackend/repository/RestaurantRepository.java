@@ -11,4 +11,6 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     List<Restaurant> findAllByDeletedAtIsNull();
 
     Optional<Restaurant> findByIdAndDeletedAtIsNull(Long id);
+
+    boolean existsByCityIdAndDeletedAtIsNull(Long cityId);
 }
