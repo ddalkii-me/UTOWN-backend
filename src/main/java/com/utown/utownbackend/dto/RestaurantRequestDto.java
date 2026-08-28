@@ -1,31 +1,22 @@
 package com.utown.utownbackend.dto;
 
 import com.utown.utownbackend.entity.RestaurantStatus;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class RestaurantRequestDto {
-    private Long ownerId;
-    private Long typeId;
-    private Long cityId;
-
-    private String name;
-    private String description;
-    private String address;
-    private String phone;
-    private String logoUrl;
-
-    private BigDecimal latitude;
-    private BigDecimal longitude;
-    private BigDecimal minimumOrderAmount;
-
-    private RestaurantStatus status;
-}
+public record RestaurantRequestDto(
+        @NotNull Long ownerId,
+        @NotNull Long typeId,
+        @NotNull Long cityId,
+        @NotBlank String name,
+        String description,
+        String address,
+        String phone,
+        String logoUrl,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        BigDecimal minimumOrderAmount,
+        @NotNull RestaurantStatus status
+) {}
