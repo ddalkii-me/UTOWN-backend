@@ -24,6 +24,12 @@ public class CityServiceImpl implements CityService {
     @Override
     public CityResponseDto createCity(CityRequestDto request) {
 
+        if (cityRepository.existsByName(request.name())) {
+            throw new ResourceConflictException(
+                    "City with this name already exists."
+            );
+        }
+
         City city = new City();
 
         city.setName(request.name());
@@ -61,6 +67,12 @@ public class CityServiceImpl implements CityService {
         City city = cityRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException("City not found"));
+
+        if (cityRepository.existsByNameAndIdNot(request.name(), id)) {
+            throw new ResourceConflictException(
+                    "City with this name already exists."
+            );
+        }
 
         city.setName(request.name());
 

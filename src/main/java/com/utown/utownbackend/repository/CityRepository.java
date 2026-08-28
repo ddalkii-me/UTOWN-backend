@@ -12,4 +12,8 @@ public interface CityRepository extends JpaRepository<City, Long> {
 
     Optional<City> findByIdAndDeletedAtIsNull(Long id);
 
+    boolean existsByName(String name);
+
+    boolean existsByNameAndIdNot(String name, Long id);
+
 }
