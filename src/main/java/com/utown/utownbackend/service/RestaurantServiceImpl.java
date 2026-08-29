@@ -35,7 +35,7 @@ public class RestaurantServiceImpl implements RestaurantService {
         RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.cityId())
+        City city = cityRepository.findByIdAndDeletedAtIsNull(request.cityId())
                 .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         Restaurant restaurant = new Restaurant();
@@ -92,7 +92,7 @@ public class RestaurantServiceImpl implements RestaurantService {
         RestaurantType type = restaurantTypeRepository.findById(request.typeId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
 
-        City city = cityRepository.findById(request.cityId())
+        City city = cityRepository.findByIdAndDeletedAtIsNull(request.cityId())
                 .orElseThrow(() -> new EntityNotFoundException("City not found"));
 
         restaurant.setOwner(owner);
