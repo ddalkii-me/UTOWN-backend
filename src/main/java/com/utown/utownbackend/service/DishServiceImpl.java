@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.DishRequestDto;
 import com.utown.utownbackend.dto.DishResponseDto;
 import com.utown.utownbackend.entity.Category;
 import com.utown.utownbackend.entity.Dish;
+import com.utown.utownbackend.entity.DishStatus;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.repository.CategoryRepository;
 import com.utown.utownbackend.repository.DishRepository;
@@ -61,8 +62,16 @@ public class DishServiceImpl implements DishService {
     }
 
     @Override
-    public List<DishResponseDto> getAllDishes() {
-        return dishRepository.findAllByDeletedAtIsNull().stream().map((this::toDto)).toList();
+    public List<DishResponseDto> getDishes(DishStatus status, boolean deleted) {
+        List<Dish> dishes;
+        if (deleted) {
+            dishes = dishRepository.findAllByDeletedAtIsNotNull();
+        } else if (status != null) {
+            dishes = dishRepository.findAllByStatusAndDeletedAtIsNull(status);
+        } else {
+            dishes = dishRepository.findAllByDeletedAtIsNull();
+        }
+        return dishes.stream().map(this::toDto).toList();
     }
 
     @Override
@@ -112,6 +121,16 @@ public class DishServiceImpl implements DishService {
                 () -> new EntityNotFoundException("Dish not found")
         );
         dish.setDeletedAt(LocalDateTime.now());
+        dishRepository.save(dish);
+    }
+
+    @Override
+    @Transactional
+    public void restoreDish(Long id) {
+        Dish dish = dishRepository.findByIdAndDeletedAtIsNotNull(id).orElseThrow(
+                () -> new EntityNotFoundException("Deleted dish not found")
+        );
+        dish.setDeletedAt(null);
         dishRepository.save(dish);
     }
 

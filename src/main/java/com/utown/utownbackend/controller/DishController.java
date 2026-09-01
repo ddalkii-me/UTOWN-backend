@@ -2,6 +2,7 @@ package com.utown.utownbackend.controller;
 
 import com.utown.utownbackend.dto.DishRequestDto;
 import com.utown.utownbackend.dto.DishResponseDto;
+import com.utown.utownbackend.entity.DishStatus;
 import com.utown.utownbackend.service.DishService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,11 @@ public class DishController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DishResponseDto>> getAllDishes() {
-        List<DishResponseDto> dishes = dishService.getAllDishes();
+    public ResponseEntity<List<DishResponseDto>> getDishes(
+            @RequestParam(required = false) DishStatus status,
+            @RequestParam(required = false, defaultValue = "false") boolean deleted
+    ) {
+        List<DishResponseDto> dishes = dishService.getDishes(status, deleted);
         return ResponseEntity.ok(dishes);
     }
 
@@ -55,6 +59,14 @@ public class DishController {
             @PathVariable Long id
     ) {
         dishService.deleteDish(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<Void> restoreDishById(
+            @PathVariable Long id
+    ) {
+        dishService.restoreDish(id);
         return ResponseEntity.noContent().build();
     }
 }
