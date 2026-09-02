@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "addresses")
@@ -46,5 +47,8 @@ public class Address extends BaseEntity {
 
     @Column(precision = 10, scale = 7)
     private BigDecimal longitude;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
 }
