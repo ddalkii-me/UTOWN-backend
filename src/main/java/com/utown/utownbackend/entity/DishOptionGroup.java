@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "dish_option_groups")
 @Getter
@@ -34,4 +36,6 @@ public class DishOptionGroup extends BaseEntity {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "dish_options")
@@ -33,4 +34,6 @@ public class DishOption extends BaseEntity {
     @Column(nullable = false)
     private DishOptionStatus status;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }
