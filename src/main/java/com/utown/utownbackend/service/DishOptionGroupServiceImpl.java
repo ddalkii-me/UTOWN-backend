@@ -21,10 +21,15 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
 
     private final DishOptionGroupRepository dishOptionGroupRepository;
     private final DishRepository dishRepository;
+    private final com.utown.utownbackend.repository.DishOptionRepository dishOptionRepository;
 
     @Override
     @Transactional
     public DishOptionGroupResponseDto createDishOptionGroup(DishOptionGroupRequestDto request) {
+        if (request.minSelections() != null && request.maxSelections() != null && request.minSelections() > request.maxSelections()) {
+            throw new IllegalArgumentException("minSelections cannot be greater than maxSelections");
+        }
+
         Dish dish = dishRepository.findByIdAndDeletedAtIsNull(request.dishId())
                 .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
 
@@ -42,7 +47,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
 
     @Override
     public List<DishOptionGroupResponseDto> getAllDishOptionGroups() {
-        return dishOptionGroupRepository.findAllByDeletedAtIsNull().stream()
+        return dishOptionGroupRepository.findAllByDeletedAtIsNullOrderBySortOrderAsc().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
@@ -52,7 +57,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
         dishRepository.findByIdAndDeletedAtIsNull(dishId)
                 .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
 
-        return dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNull(dishId).stream()
+        return dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(dishId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
@@ -67,6 +72,10 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
     @Override
     @Transactional
     public DishOptionGroupResponseDto updateDishOptionGroup(Long id, DishOptionGroupRequestDto request) {
+        if (request.minSelections() != null && request.maxSelections() != null && request.minSelections() > request.maxSelections()) {
+            throw new IllegalArgumentException("minSelections cannot be greater than maxSelections");
+        }
+
         DishOptionGroup group = dishOptionGroupRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
 
@@ -87,6 +96,10 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
     @Override
     @Transactional
     public void deleteDishOptionGroup(Long id) {
+        if (dishOptionRepository.existsByOptionGroupIdAndDeletedAtIsNull(id)) {
+            throw new IllegalStateException("Cannot delete Option Group while it has active Options");
+        }
+
         DishOptionGroup group = dishOptionGroupRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
         group.setDeletedAt(LocalDateTime.now());

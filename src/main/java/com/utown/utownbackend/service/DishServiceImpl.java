@@ -22,11 +22,13 @@ public class DishServiceImpl implements DishService {
     final DishRepository dishRepository;
     final RestaurantRepository restaurantRepository;
     final CategoryRepository categoryRepository;
+    final com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository;
 
-    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository) {
+    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository) {
         this.dishRepository = dishRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
+        this.dishOptionGroupRepository = dishOptionGroupRepository;
     }
 
     @Override
@@ -117,6 +119,10 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     public void deleteDish(Long id) {
+        if (dishOptionGroupRepository.existsByDishIdAndDeletedAtIsNull(id)) {
+            throw new IllegalStateException("Cannot delete Dish while it has active Option Groups");
+        }
+
         Dish dish = dishRepository.findByIdAndDeletedAtIsNull(id).orElseThrow(
                 () -> new EntityNotFoundException("Dish not found")
         );

@@ -41,7 +41,7 @@ public class DishOptionServiceImpl implements DishOptionService {
 
     @Override
     public List<DishOptionResponseDto> getAllDishOptions() {
-        return dishOptionRepository.findAllByDeletedAtIsNull().stream()
+        return dishOptionRepository.findAllByDeletedAtIsNullOrderBySortOrderAsc().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
@@ -51,7 +51,7 @@ public class DishOptionServiceImpl implements DishOptionService {
         dishOptionGroupRepository.findByIdAndDeletedAtIsNull(optionGroupId)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
 
-        return dishOptionRepository.findAllByOptionGroupIdAndDeletedAtIsNull(optionGroupId).stream()
+        return dishOptionRepository.findAllByOptionGroupIdAndDeletedAtIsNullOrderBySortOrderAsc(optionGroupId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
