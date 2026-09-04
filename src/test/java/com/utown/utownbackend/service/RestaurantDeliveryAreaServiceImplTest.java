@@ -309,4 +309,24 @@ class RestaurantDeliveryAreaServiceImplTest {
         verify(restaurantDeliveryAreaRepository, never())
                 .save(any(RestaurantDeliveryArea.class));
     }
+    @Test
+    void addDeliveryArea_shouldRejectWhenRestaurantCityIsNull() {
+
+        restaurant.setCity(null);
+
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
+
+        when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(deliveryArea));
+
+        assertThrows(
+                ResourceConflictException.class,
+                () -> restaurantDeliveryAreaService
+                        .addDeliveryArea(1L, 1L)
+        );
+
+        verify(restaurantDeliveryAreaRepository, never())
+                .save(any(RestaurantDeliveryArea.class));
+    }
 }

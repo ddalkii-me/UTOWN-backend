@@ -48,11 +48,15 @@ public class RestaurantDeliveryAreaServiceImpl
                         )
                 );
 
-        if (!restaurant.getCity().getId()
+        if (restaurant.getCity() == null
+                || restaurant.getCity().getId() == null
+                || deliveryArea.getCity() == null
+                || deliveryArea.getCity().getId() == null
+                || !restaurant.getCity().getId()
                 .equals(deliveryArea.getCity().getId())) {
 
             throw new ResourceConflictException(
-                    "Restaurant and delivery area must belong to the same city"
+                    "Restaurant and delivery area must belong to the same city."
             );
         }
 
