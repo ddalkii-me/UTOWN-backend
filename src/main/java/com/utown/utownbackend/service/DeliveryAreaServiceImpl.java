@@ -111,6 +111,15 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
                 .findByIdAndDeletedAtIsNull(request.cityId())
                 .orElseThrow(() ->
                         new EntityNotFoundException("City not found"));
+
+        if (!deliveryArea.getCity().getId().equals(request.cityId())
+                && addressRepository.existsByDeliveryAreaIdAndDeletedAtIsNull(id)) {
+
+            throw new ResourceConflictException(
+                    "Cannot change delivery area city because it is used by active addresses."
+            );
+        }
+
         if (deliveryAreaRepository
                 .existsByCityIdAndNameAndIdNotAndDeletedAtIsNull(
                         request.cityId(),

@@ -39,4 +39,7 @@ public class User extends BaseEntity{
     @Column(name = "email_verified_at")
     private LocalDateTime emailVerifiedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
 }
