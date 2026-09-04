@@ -267,6 +267,34 @@ class DeliveryAreaServiceImplTest {
                 .save(any(DeliveryArea.class));
     }
     @Test
+    void updateDeliveryArea_shouldRejectCityChangeWhenActiveAddressExists() {
+
+        City newCity = new City();
+        newCity.setId(2L);
+        newCity.setName("Busan");
+
+        DeliveryAreaRequestDto request =
+                new DeliveryAreaRequestDto(2L, "Gangnam");
+
+        when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(deliveryArea));
+
+        when(cityRepository.findByIdAndDeletedAtIsNull(2L))
+                .thenReturn(Optional.of(newCity));
+
+        when(addressRepository
+                .existsByDeliveryAreaIdAndDeletedAtIsNull(1L))
+                .thenReturn(true);
+
+        assertThrows(
+                ResourceConflictException.class,
+                () -> deliveryAreaService.updateDeliveryArea(1L, request)
+        );
+
+        verify(deliveryAreaRepository, never())
+                .save(any(DeliveryArea.class));
+    }
+    @Test
     void deleteDeliveryArea_shouldSoftDeleteSuccessfully() {
 
         when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
@@ -313,5 +341,42 @@ class DeliveryAreaServiceImplTest {
 
         verify(addressRepository, never())
                 .existsByDeliveryAreaIdAndDeletedAtIsNull(anyLong());
+    }
+    @Test
+    void updateDeliveryArea_shouldAllowCityChangeWhenNoActiveAddressExists() {
+
+        City newCity = new City();
+        newCity.setId(2L);
+        newCity.setName("Busan");
+
+        DeliveryAreaRequestDto request =
+                new DeliveryAreaRequestDto(2L, "Gangnam");
+
+        when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(deliveryArea));
+
+        when(cityRepository.findByIdAndDeletedAtIsNull(2L))
+                .thenReturn(Optional.of(newCity));
+
+        when(addressRepository
+                .existsByDeliveryAreaIdAndDeletedAtIsNull(1L))
+                .thenReturn(false);
+
+        when(deliveryAreaRepository
+                .existsByCityIdAndNameAndIdNotAndDeletedAtIsNull(
+                        2L, "Gangnam", 1L))
+                .thenReturn(false);
+
+        when(deliveryAreaRepository.save(deliveryArea))
+                .thenReturn(deliveryArea);
+
+        DeliveryAreaResponseDto result =
+                deliveryAreaService.updateDeliveryArea(1L, request);
+
+        assertNotNull(result);
+        assertEquals(2L, result.cityId());
+        assertEquals("Gangnam", result.name());
+
+        verify(deliveryAreaRepository).save(deliveryArea);
     }
 }
