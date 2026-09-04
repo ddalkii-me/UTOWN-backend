@@ -1,4 +1,4 @@
-package com.utown.utownbackend.service.impl;
+package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.RestaurantDeliveryAreaResponseDto;
 import com.utown.utownbackend.entity.DeliveryArea;
@@ -8,7 +8,6 @@ import com.utown.utownbackend.exception.ResourceConflictException;
 import com.utown.utownbackend.repository.DeliveryAreaRepository;
 import com.utown.utownbackend.repository.RestaurantDeliveryAreaRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
-import com.utown.utownbackend.service.RestaurantDeliveryAreaService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
