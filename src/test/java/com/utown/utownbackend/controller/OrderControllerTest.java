@@ -1,8 +1,6 @@
 package com.utown.utownbackend.controller;
 
-import com.utown.utownbackend.dto.OrderItemResponseDto;
-import com.utown.utownbackend.dto.OrderRequestDto;
-import com.utown.utownbackend.dto.OrderResponseDto;
+import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.OrderStatus;
 import com.utown.utownbackend.entity.PaymentMethod;
 import com.utown.utownbackend.entity.PaymentStatus;
@@ -31,28 +29,28 @@ class OrderControllerTest {
     @InjectMocks
     private OrderController orderController;
 
-    private OrderResponseDto createDummyOrderResponse(Long id) {
+    private OrderResponseDto createDummyOrderResponse(Long id, OrderStatus status) {
         return new OrderResponseDto(
                 id,
                 1L,
                 10L,
                 100L,
                 "ORD-12345",
-                OrderStatus.PENDING,
+                status,
                 PaymentMethod.CARD,
                 PaymentStatus.PENDING,
                 "Leave at door",
-                null,
-                null,
+                status == OrderStatus.ACCEPTED ? 30 : null,
+                status == OrderStatus.DECLINED ? "Too busy" : null,
                 BigDecimal.valueOf(25.00),
                 BigDecimal.ZERO,
                 BigDecimal.valueOf(25.00),
                 "USD",
+                status == OrderStatus.ACCEPTED ? LocalDateTime.now() : null,
+                status == OrderStatus.DECLINED ? LocalDateTime.now() : null,
                 null,
                 null,
-                null,
-                null,
-                null,
+                status == OrderStatus.COMPLETED ? LocalDateTime.now() : null,
                 null,
                 List.of()
         );
@@ -69,7 +67,7 @@ class OrderControllerTest {
                 List.of()
         );
 
-        OrderResponseDto mockResponse = createDummyOrderResponse(1L);
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
         when(orderService.createOrder(request)).thenReturn(mockResponse);
 
         ResponseEntity<OrderResponseDto> response = orderController.createOrder(request);
@@ -82,21 +80,34 @@ class OrderControllerTest {
     }
 
     @Test
-    void getAllOrders_returnsOk() {
-        OrderResponseDto mockResponse = createDummyOrderResponse(1L);
-        when(orderService.getAllOrders()).thenReturn(List.of(mockResponse));
+    void getOrders_returnsOk() {
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
+        when(orderService.getOrders(10L, 1L, List.of(OrderStatus.PENDING))).thenReturn(List.of(mockResponse));
 
-        ResponseEntity<List<OrderResponseDto>> response = orderController.getAllOrders();
+        ResponseEntity<List<OrderResponseDto>> response = orderController.getOrders(10L, 1L, List.of(OrderStatus.PENDING));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        verify(orderService).getAllOrders();
+        verify(orderService).getOrders(10L, 1L, List.of(OrderStatus.PENDING));
+    }
+
+    @Test
+    void getOrders_withoutFilters_returnsOk() {
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
+        when(orderService.getOrders(null, null, null)).thenReturn(List.of(mockResponse));
+
+        ResponseEntity<List<OrderResponseDto>> response = orderController.getOrders(null, null, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(orderService).getOrders(null, null, null);
     }
 
     @Test
     void getOrderById_returnsOk() {
-        OrderResponseDto mockResponse = createDummyOrderResponse(1L);
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
         when(orderService.getOrderById(1L)).thenReturn(mockResponse);
 
         ResponseEntity<OrderResponseDto> response = orderController.getOrderById(1L);
@@ -105,5 +116,61 @@ class OrderControllerTest {
         assertNotNull(response.getBody());
         assertEquals(1L, response.getBody().id());
         verify(orderService).getOrderById(1L);
+    }
+
+    @Test
+    void acceptOrder_returnsOk() {
+        OrderAcceptRequestDto request = new OrderAcceptRequestDto(30);
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.ACCEPTED);
+        when(orderService.acceptOrder(1L, request)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.acceptOrder(1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.ACCEPTED, response.getBody().status());
+        assertEquals(30, response.getBody().estimatedCookingMinutes());
+        verify(orderService).acceptOrder(1L, request);
+    }
+
+    @Test
+    void startPreparation_returnsOk() {
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.IN_PREPARATION);
+        when(orderService.startPreparation(1L)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.startPreparation(1L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.IN_PREPARATION, response.getBody().status());
+        verify(orderService).startPreparation(1L);
+    }
+
+    @Test
+    void completeOrder_returnsOk() {
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.COMPLETED);
+        when(orderService.completeOrder(1L)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.completeOrder(1L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.COMPLETED, response.getBody().status());
+        verify(orderService).completeOrder(1L);
+    }
+
+    @Test
+    void declineOrder_returnsOk() {
+        OrderDeclineRequestDto request = new OrderDeclineRequestDto("Kitchen is closing");
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.DECLINED);
+        when(orderService.declineOrder(1L, request)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.declineOrder(1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.DECLINED, response.getBody().status());
+        assertEquals("Too busy", response.getBody().rejectionReason());
+        verify(orderService).declineOrder(1L, request);
     }
 }

@@ -1,8 +1,6 @@
 package com.utown.utownbackend.service;
 
-import com.utown.utownbackend.dto.OrderItemRequestDto;
-import com.utown.utownbackend.dto.OrderRequestDto;
-import com.utown.utownbackend.dto.OrderResponseDto;
+import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -12,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -48,6 +47,9 @@ class OrderServiceImplTest {
     @Mock
     private DishOptionRepository dishOptionRepository;
 
+    @Mock
+    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -63,9 +65,13 @@ class OrderServiceImplTest {
         user = new User();
         user.setId(1L);
 
+        User owner = new User();
+        owner.setId(99L);
+
         restaurant = new Restaurant();
         restaurant.setId(10L);
         restaurant.setName("Pizza Place");
+        restaurant.setOwner(owner);
 
         address = new Address();
         address.setId(100L);
@@ -160,6 +166,7 @@ class OrderServiceImplTest {
         verify(orderRepository).save(any(Order.class));
         verify(orderItemRepository).save(any(OrderItem.class));
         verify(orderItemOptionRepository).save(any(OrderItemOption.class));
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
     }
 
     @Test
@@ -307,28 +314,8 @@ class OrderServiceImplTest {
 
     @Test
     void getOrderById_success() {
-        Order o = new Order();
-        o.setId(500L);
-        o.setUser(user);
-        o.setRestaurant(restaurant);
-        o.setAddress(address);
-        o.setOrderNumber("ORD-123");
-        o.setStatus(OrderStatus.PENDING);
-        o.setPaymentMethod(PaymentMethod.CASH);
-        o.setPaymentStatus(PaymentStatus.PENDING);
-        o.setSubtotal(BigDecimal.valueOf(10.00));
-        o.setDeliveryFee(BigDecimal.ZERO);
-        o.setTotalAmount(BigDecimal.valueOf(10.00));
-        o.setCurrency("USD");
-
-        OrderItem item = new OrderItem();
-        item.setId(600L);
-        item.setOrder(o);
-        item.setDish(dish1);
-        item.setDishName(dish1.getName());
-        item.setUnitPrice(dish1.getPrice());
-        item.setQuantity(1);
-        item.setSubtotal(dish1.getPrice());
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        OrderItem item = createTestOrderItem(600L, o);
 
         when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
         when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
@@ -352,30 +339,10 @@ class OrderServiceImplTest {
 
     @Test
     void getAllOrders_success() {
-        Order o = new Order();
-        o.setId(500L);
-        o.setUser(user);
-        o.setRestaurant(restaurant);
-        o.setAddress(address);
-        o.setOrderNumber("ORD-123");
-        o.setStatus(OrderStatus.PENDING);
-        o.setPaymentMethod(PaymentMethod.CASH);
-        o.setPaymentStatus(PaymentStatus.PENDING);
-        o.setSubtotal(BigDecimal.valueOf(10.00));
-        o.setDeliveryFee(BigDecimal.ZERO);
-        o.setTotalAmount(BigDecimal.valueOf(10.00));
-        o.setCurrency("USD");
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        OrderItem item = createTestOrderItem(600L, o);
 
-        OrderItem item = new OrderItem();
-        item.setId(600L);
-        item.setOrder(o);
-        item.setDish(dish1);
-        item.setDishName(dish1.getName());
-        item.setUnitPrice(dish1.getPrice());
-        item.setQuantity(1);
-        item.setSubtotal(dish1.getPrice());
-
-        when(orderRepository.findAll()).thenReturn(List.of(o));
+        when(orderRepository.findAll(any(Specification.class))).thenReturn(List.of(o));
         when(orderItemRepository.findAllByOrderIdIn(List.of(500L))).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
 
@@ -385,5 +352,175 @@ class OrderServiceImplTest {
         assertEquals(1, responses.size());
         assertEquals(500L, responses.get(0).id());
         assertEquals(1, responses.get(0).items().size());
+    }
+
+    @Test
+    void getOrders_withFilters_success() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findAll(any(Specification.class))).thenReturn(List.of(o));
+        when(orderItemRepository.findAllByOrderIdIn(List.of(500L))).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        List<OrderResponseDto> responses = orderService.getOrders(10L, 1L, List.of(OrderStatus.PENDING));
+
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals(500L, responses.get(0).id());
+    }
+
+    @Test
+    void acceptOrder_success() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        OrderAcceptRequestDto request = new OrderAcceptRequestDto(30);
+        OrderResponseDto response = orderService.acceptOrder(500L, request);
+
+        assertNotNull(response);
+        assertEquals(OrderStatus.ACCEPTED, response.status());
+        assertEquals(30, response.estimatedCookingMinutes());
+        assertNotNull(response.acceptedAt());
+        verify(orderRepository).save(o);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void acceptOrder_invalidStatus_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.ACCEPTED);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        OrderAcceptRequestDto request = new OrderAcceptRequestDto(30);
+        assertThrows(IllegalStateException.class, () -> orderService.acceptOrder(500L, request));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void acceptOrder_notFound_throwsEntityNotFound() {
+        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+
+        OrderAcceptRequestDto request = new OrderAcceptRequestDto(30);
+        assertThrows(EntityNotFoundException.class, () -> orderService.acceptOrder(999L, request));
+    }
+
+    @Test
+    void startPreparation_success() {
+        Order o = createTestOrder(500L, OrderStatus.ACCEPTED);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        OrderResponseDto response = orderService.startPreparation(500L);
+
+        assertNotNull(response);
+        assertEquals(OrderStatus.IN_PREPARATION, response.status());
+        verify(orderRepository).save(o);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void startPreparation_invalidStatus_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        assertThrows(IllegalStateException.class, () -> orderService.startPreparation(500L));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void completeOrder_success() {
+        Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        OrderResponseDto response = orderService.completeOrder(500L);
+
+        assertNotNull(response);
+        assertEquals(OrderStatus.COMPLETED, response.status());
+        assertNotNull(response.deliveredAt());
+        verify(orderRepository).save(o);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void completeOrder_invalidStatus_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void declineOrder_success() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        OrderDeclineRequestDto request = new OrderDeclineRequestDto("Restaurant is closed");
+        OrderResponseDto response = orderService.declineOrder(500L, request);
+
+        assertNotNull(response);
+        assertEquals(OrderStatus.DECLINED, response.status());
+        assertEquals("Restaurant is closed", response.rejectionReason());
+        assertNotNull(response.rejectedAt());
+        verify(orderRepository).save(o);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void declineOrder_invalidStatus_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        OrderDeclineRequestDto request = new OrderDeclineRequestDto("Restaurant is closed");
+        assertThrows(IllegalStateException.class, () -> orderService.declineOrder(500L, request));
+        verify(orderRepository, never()).save(o);
+    }
+
+    private Order createTestOrder(Long id, OrderStatus status) {
+        Order o = new Order();
+        o.setId(id);
+        o.setUser(user);
+        o.setRestaurant(restaurant);
+        o.setAddress(address);
+        o.setOrderNumber("ORD-123");
+        o.setStatus(status);
+        o.setPaymentMethod(PaymentMethod.CASH);
+        o.setPaymentStatus(PaymentStatus.PENDING);
+        o.setSubtotal(BigDecimal.valueOf(10.00));
+        o.setDeliveryFee(BigDecimal.ZERO);
+        o.setTotalAmount(BigDecimal.valueOf(10.00));
+        o.setCurrency("USD");
+        return o;
+    }
+
+    private OrderItem createTestOrderItem(Long id, Order order) {
+        OrderItem item = new OrderItem();
+        item.setId(id);
+        item.setOrder(order);
+        item.setDish(dish1);
+        item.setDishName(dish1.getName());
+        item.setUnitPrice(dish1.getPrice());
+        item.setQuantity(1);
+        item.setSubtotal(dish1.getPrice());
+        return item;
     }
 }

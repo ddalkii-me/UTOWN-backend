@@ -1,17 +1,17 @@
 package com.utown.utownbackend.service;
 
-import com.utown.utownbackend.dto.OrderItemOptionResponseDto;
-import com.utown.utownbackend.dto.OrderItemResponseDto;
-import com.utown.utownbackend.dto.OrderRequestDto;
-import com.utown.utownbackend.dto.OrderResponseDto;
+import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +27,7 @@ public class OrderServiceImpl implements OrderService {
     private final AddressRepository addressRepository;
     private final DishRepository dishRepository;
     private final DishOptionRepository dishOptionRepository;
+    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     private record PreparedItem(
             Dish dish,
@@ -120,6 +121,7 @@ public class OrderServiceImpl implements OrderService {
         order.setDeliveryNote(request.deliveryNote());
 
         Order savedOrder = orderRepository.save(order);
+        recordStatusHistory(savedOrder, OrderStatus.PENDING, user, null);
 
         List<OrderItemResponseDto> itemResponseDtos = new ArrayList<>();
 
@@ -166,11 +168,169 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderResponseDto> getAllOrders() {
-        List<Order> orders = orderRepository.findAll();
+        return getOrders(null, null, null);
+    }
+
+    @Override
+    public List<OrderResponseDto> getOrders(Long restaurantId, Long userId, List<OrderStatus> statuses) {
+        Specification<Order> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (restaurantId != null) {
+                predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
+            }
+            if (userId != null) {
+                predicates.add(cb.equal(root.get("user").get("id"), userId));
+            }
+            if (statuses != null && !statuses.isEmpty()) {
+                predicates.add(root.get("status").in(statuses));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<Order> orders = orderRepository.findAll(spec);
         if (orders.isEmpty()) {
             return List.of();
         }
 
+        return mapOrdersToDtos(orders);
+    }
+
+    @Override
+    public OrderResponseDto getOrderById(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        return toOrderResponseDto(order, getOrderItemResponseDtos(order.getId()));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto acceptOrder(Long id, OrderAcceptRequestDto request) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalStateException("Order cannot be accepted from status: " + order.getStatus());
+        }
+
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setAcceptedAt(LocalDateTime.now());
+        order.setEstimatedCookingMinutes(request.estimatedCookingMinutes());
+
+        Order savedOrder = orderRepository.save(order);
+        User actor = resolveActor(savedOrder);
+        recordStatusHistory(savedOrder, OrderStatus.ACCEPTED, actor,
+                "Estimated cooking time: " + request.estimatedCookingMinutes() + " mins");
+
+        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto startPreparation(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.ACCEPTED) {
+            throw new IllegalStateException("Order cannot be moved to preparation from status: " + order.getStatus());
+        }
+
+        order.setStatus(OrderStatus.IN_PREPARATION);
+
+        Order savedOrder = orderRepository.save(order);
+        User actor = resolveActor(savedOrder);
+        recordStatusHistory(savedOrder, OrderStatus.IN_PREPARATION, actor, null);
+
+        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto completeOrder(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.IN_PREPARATION) {
+            throw new IllegalStateException("Order cannot be completed from status: " + order.getStatus());
+        }
+
+        order.setStatus(OrderStatus.COMPLETED);
+        order.setDeliveredAt(LocalDateTime.now());
+
+        Order savedOrder = orderRepository.save(order);
+        User actor = resolveActor(savedOrder);
+        recordStatusHistory(savedOrder, OrderStatus.COMPLETED, actor, null);
+
+        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto declineOrder(Long id, OrderDeclineRequestDto request) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalStateException("Order cannot be declined from status: " + order.getStatus());
+        }
+
+        order.setStatus(OrderStatus.DECLINED);
+        order.setRejectedAt(LocalDateTime.now());
+        order.setRejectionReason(request.reason());
+
+        Order savedOrder = orderRepository.save(order);
+        User actor = resolveActor(savedOrder);
+        recordStatusHistory(savedOrder, OrderStatus.DECLINED, actor, request.reason());
+
+        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+    }
+
+    private User resolveActor(Order order) {
+        if (order.getRestaurant() != null && order.getRestaurant().getOwner() != null) {
+            return order.getRestaurant().getOwner();
+        }
+        return order.getUser();
+    }
+
+    private void recordStatusHistory(Order order, OrderStatus status, User user, String reason) {
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(order);
+        history.setStatus(status);
+        history.setChangedByUser(user);
+        history.setReason(reason);
+        orderStatusHistoryRepository.save(history);
+    }
+
+    private List<OrderItemResponseDto> getOrderItemResponseDtos(Long orderId) {
+        List<OrderItem> items = orderItemRepository.findAllByOrderId(orderId);
+        List<Long> itemIds = items.stream().map(BaseEntity::getId).toList();
+        List<OrderItemOption> options = itemIds.isEmpty()
+                ? List.of()
+                : orderItemOptionRepository.findAllByOrderItemIdIn(itemIds);
+
+        Map<Long, List<OrderItemOption>> optionsByItemId = options.stream()
+                .collect(Collectors.groupingBy(opt -> opt.getOrderItem().getId()));
+
+        return items.stream()
+                .map(item -> {
+                    List<OrderItemOption> itemOpts = optionsByItemId.getOrDefault(item.getId(), List.of());
+                    List<OrderItemOptionResponseDto> optDtos = itemOpts.stream()
+                            .map(opt -> new OrderItemOptionResponseDto(opt.getId(), opt.getOptionName(), opt.getOptionPrice()))
+                            .toList();
+                    return new OrderItemResponseDto(
+                            item.getId(),
+                            item.getDish().getId(),
+                            item.getDishName(),
+                            item.getUnitPrice(),
+                            item.getQuantity(),
+                            item.getSubtotal(),
+                            optDtos
+                    );
+                })
+                .toList();
+    }
+
+    private List<OrderResponseDto> mapOrdersToDtos(List<Order> orders) {
         List<Long> orderIds = orders.stream().map(BaseEntity::getId).toList();
         List<OrderItem> allItems = orderItemRepository.findAllByOrderIdIn(orderIds);
 
@@ -207,41 +367,6 @@ public class OrderServiceImpl implements OrderService {
                 .toList();
     }
 
-    @Override
-    public OrderResponseDto getOrderById(Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
-
-        List<OrderItem> items = orderItemRepository.findAllByOrderId(order.getId());
-        List<Long> itemIds = items.stream().map(BaseEntity::getId).toList();
-        List<OrderItemOption> options = itemIds.isEmpty()
-                ? List.of()
-                : orderItemOptionRepository.findAllByOrderItemIdIn(itemIds);
-
-        Map<Long, List<OrderItemOption>> optionsByItemId = options.stream()
-                .collect(Collectors.groupingBy(opt -> opt.getOrderItem().getId()));
-
-        List<OrderItemResponseDto> itemDtos = items.stream()
-                .map(item -> {
-                    List<OrderItemOption> itemOpts = optionsByItemId.getOrDefault(item.getId(), List.of());
-                    List<OrderItemOptionResponseDto> optDtos = itemOpts.stream()
-                            .map(opt -> new OrderItemOptionResponseDto(opt.getId(), opt.getOptionName(), opt.getOptionPrice()))
-                            .toList();
-                    return new OrderItemResponseDto(
-                            item.getId(),
-                            item.getDish().getId(),
-                            item.getDishName(),
-                            item.getUnitPrice(),
-                            item.getQuantity(),
-                            item.getSubtotal(),
-                            optDtos
-                    );
-                })
-                .toList();
-
-        return toOrderResponseDto(order, itemDtos);
-    }
-
     private OrderResponseDto toOrderResponseDto(Order order, List<OrderItemResponseDto> items) {
         return new OrderResponseDto(
                 order.getId(),
@@ -269,4 +394,3 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 }
-
