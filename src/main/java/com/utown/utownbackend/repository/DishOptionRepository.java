@@ -10,10 +10,10 @@ import java.util.Optional;
 
 public interface DishOptionRepository extends JpaRepository<DishOption, Long> {
 
-    @Query("SELECT o FROM DishOption o WHERE o.deletedAt IS NULL AND o.dishOptionGroup.deletedAt IS NULL AND o.dishOptionGroup.dish.deletedAt IS NULL ORDER BY o.sortOrder ASC")
+    @Query("SELECT o FROM DishOption o WHERE o.deletedAt IS NULL AND o.optionGroup.deletedAt IS NULL AND o.optionGroup.dish.deletedAt IS NULL ORDER BY o.sortOrder ASC")
     List<DishOption> findAllByDeletedAtIsNullOrderBySortOrderAsc();
 
-    @Query("SELECT o FROM DishOption o WHERE o.dishOptionGroup.id = :optionGroupId AND o.deletedAt IS NULL AND o.dishOptionGroup.deletedAt IS NULL AND o.dishOptionGroup.dish.deletedAt IS NULL ORDER BY o.sortOrder ASC")
+    @Query("SELECT o FROM DishOption o WHERE o.optionGroup.id = :optionGroupId AND o.deletedAt IS NULL AND o.optionGroup.deletedAt IS NULL AND o.optionGroup.dish.deletedAt IS NULL ORDER BY o.sortOrder ASC")
     List<DishOption> findAllByOptionGroupIdAndDeletedAtIsNullOrderBySortOrderAsc(@Param("optionGroupId") Long optionGroupId);
 
     boolean existsByOptionGroupIdAndDeletedAtIsNull(Long optionGroupId);
