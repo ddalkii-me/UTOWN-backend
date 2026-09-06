@@ -309,10 +309,76 @@ class RestaurantDeliveryAreaServiceImplTest {
         verify(restaurantDeliveryAreaRepository, never())
                 .save(any(RestaurantDeliveryArea.class));
     }
+
     @Test
     void addDeliveryArea_shouldRejectWhenRestaurantCityIsNull() {
 
         restaurant.setCity(null);
+
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
+
+        when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(deliveryArea));
+
+        assertThrows(
+                ResourceConflictException.class,
+                () -> restaurantDeliveryAreaService
+                        .addDeliveryArea(1L, 1L)
+        );
+
+        verify(restaurantDeliveryAreaRepository, never())
+                .save(any(RestaurantDeliveryArea.class));
+    }
+
+    @Test
+    void addDeliveryArea_shouldRejectWhenDeliveryAreaCityIsNull() {
+
+        deliveryArea.setCity(null);
+
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
+
+        when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(deliveryArea));
+
+        assertThrows(
+                ResourceConflictException.class,
+                () -> restaurantDeliveryAreaService
+                        .addDeliveryArea(1L, 1L)
+        );
+
+        verify(restaurantDeliveryAreaRepository, never())
+                .save(any(RestaurantDeliveryArea.class));
+    }
+
+    @Test
+    void addDeliveryArea_shouldRejectWhenRestaurantCityIdIsNull() {
+
+        city.setId(null);
+
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
+
+        when(deliveryAreaRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(deliveryArea));
+
+        assertThrows(
+                ResourceConflictException.class,
+                () -> restaurantDeliveryAreaService
+                        .addDeliveryArea(1L, 1L)
+        );
+
+        verify(restaurantDeliveryAreaRepository, never())
+                .save(any(RestaurantDeliveryArea.class));
+    }
+
+    @Test
+    void addDeliveryArea_shouldRejectWhenDeliveryAreaCityIdIsNull() {
+
+        City deliveryAreaCity = new City();
+        deliveryAreaCity.setId(null);
+        deliveryArea.setCity(deliveryAreaCity);
 
         when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
                 .thenReturn(Optional.of(restaurant));
