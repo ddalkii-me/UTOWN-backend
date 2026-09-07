@@ -25,10 +25,6 @@ public class Rating extends BaseEntity {
     private Restaurant restaurant;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dish_id", nullable = false)
-    private Dish dish;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
