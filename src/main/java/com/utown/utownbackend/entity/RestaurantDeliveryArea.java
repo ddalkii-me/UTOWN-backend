@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(
         name = "restaurant_delivery_areas",
@@ -29,5 +31,8 @@ public class RestaurantDeliveryArea extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "delivery_area_id", nullable = false)
     private DeliveryArea deliveryArea;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
 }

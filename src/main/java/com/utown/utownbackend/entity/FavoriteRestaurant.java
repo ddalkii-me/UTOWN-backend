@@ -29,4 +29,7 @@ public class FavoriteRestaurant extends BaseEntity{
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
 }
