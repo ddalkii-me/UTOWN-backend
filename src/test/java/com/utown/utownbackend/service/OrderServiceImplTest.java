@@ -48,6 +48,9 @@ class OrderServiceImplTest {
     private DishOptionRepository dishOptionRepository;
 
     @Mock
+    private DishOptionGroupRepository dishOptionGroupRepository;
+
+    @Mock
     private OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     @InjectMocks
@@ -72,6 +75,8 @@ class OrderServiceImplTest {
         restaurant.setId(10L);
         restaurant.setName("Pizza Place");
         restaurant.setOwner(owner);
+        restaurant.setStatus(RestaurantStatus.OPEN);
+        restaurant.setMinimumOrderAmount(BigDecimal.valueOf(5.00));
 
         address = new Address();
         address.setId(100L);
@@ -82,16 +87,19 @@ class OrderServiceImplTest {
         dish1.setName("Pepperoni Pizza");
         dish1.setPrice(BigDecimal.valueOf(10.00));
         dish1.setRestaurant(restaurant);
+        dish1.setStatus(DishStatus.AVAILABLE);
 
         optionGroup = new DishOptionGroup();
         optionGroup.setId(30L);
         optionGroup.setDish(dish1);
+        optionGroup.setRequired(false);
 
         option1 = new DishOption();
         option1.setId(40L);
         option1.setName("Extra Cheese");
         option1.setAdditionalPrice(BigDecimal.valueOf(2.50));
         option1.setOptionGroup(optionGroup);
+        option1.setStatus(DishOptionStatus.AVAILABLE);
     }
 
     @Test

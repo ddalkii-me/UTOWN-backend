@@ -27,6 +27,7 @@ public class OrderServiceImpl implements OrderService {
     private final AddressRepository addressRepository;
     private final DishRepository dishRepository;
     private final DishOptionRepository dishOptionRepository;
+    private final DishOptionGroupRepository dishOptionGroupRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     private record PreparedItem(
@@ -45,6 +46,10 @@ public class OrderServiceImpl implements OrderService {
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found with id: " + request.restaurantId()));
+
+        if (restaurant.getStatus() == RestaurantStatus.CLOSED) {
+            throw new IllegalArgumentException("Cannot place order: Restaurant is closed");
+        }
 
         Address address = addressRepository.findByIdAndDeletedAtIsNull(request.addressId())
                 .orElseThrow(() -> new EntityNotFoundException("Address not found with id: " + request.addressId()));
@@ -68,6 +73,10 @@ public class OrderServiceImpl implements OrderService {
             Dish dish = dishRepository.findByIdAndDeletedAtIsNull(itemDto.dishId())
                     .orElseThrow(() -> new EntityNotFoundException("Dish not found with id: " + itemDto.dishId()));
 
+            if (dish.getStatus() != DishStatus.AVAILABLE) {
+                throw new IllegalArgumentException("Dish '" + dish.getName() + "' is currently unavailable");
+            }
+
             if (!dish.getRestaurant().getId().equals(restaurant.getId())) {
                 throw new IllegalArgumentException("Dish '" + dish.getName() + "' does not belong to restaurant '" + restaurant.getName() + "'");
             }
@@ -76,9 +85,18 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal optionsUnitSum = BigDecimal.ZERO;
 
             if (itemDto.optionIds() != null && !itemDto.optionIds().isEmpty()) {
+                Set<Long> uniqueOptionIds = new HashSet<>(itemDto.optionIds());
+                if (uniqueOptionIds.size() != itemDto.optionIds().size()) {
+                    throw new IllegalArgumentException("Duplicate options provided for dish '" + dish.getName() + "'");
+                }
+
                 for (Long optionId : itemDto.optionIds()) {
                     DishOption dishOption = dishOptionRepository.findByIdAndDeletedAtIsNull(optionId)
                             .orElseThrow(() -> new EntityNotFoundException("Dish option not found with id: " + optionId));
+
+                    if (dishOption.getStatus() != DishOptionStatus.AVAILABLE) {
+                        throw new IllegalArgumentException("Dish option '" + dishOption.getName() + "' is currently unavailable");
+                    }
 
                     if (dishOption.getOptionGroup().getDeletedAt() != null || dishOption.getOptionGroup().getDish().getDeletedAt() != null) {
                         throw new EntityNotFoundException("Dish option not found or inactive with id: " + optionId);
@@ -93,12 +111,34 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
+            List<DishOptionGroup> activeGroups = dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(dish.getId());
+            Map<Long, Long> groupSelectionCounts = options.stream()
+                    .collect(Collectors.groupingBy(opt -> opt.getOptionGroup().getId(), Collectors.counting()));
+
+            for (DishOptionGroup group : activeGroups) {
+                long count = groupSelectionCounts.getOrDefault(group.getId(), 0L);
+
+                if (Boolean.TRUE.equals(group.getRequired()) && count == 0) {
+                    throw new IllegalArgumentException("Missing required option group '" + group.getName() + "' for dish '" + dish.getName() + "'");
+                }
+                if (group.getMinSelections() != null && count < group.getMinSelections()) {
+                    throw new IllegalArgumentException("Minimum selections not met for group '" + group.getName() + "' in dish '" + dish.getName() + "'");
+                }
+                if (group.getMaxSelections() != null && count > group.getMaxSelections()) {
+                    throw new IllegalArgumentException("Maximum selections exceeded for group '" + group.getName() + "' in dish '" + dish.getName() + "'");
+                }
+            }
+
             BigDecimal unitPrice = dish.getPrice();
             BigDecimal itemUnitTotal = unitPrice.add(optionsUnitSum);
             BigDecimal itemSubtotal = itemUnitTotal.multiply(BigDecimal.valueOf(itemDto.quantity()));
 
             orderSubtotal = orderSubtotal.add(itemSubtotal);
             preparedItems.add(new PreparedItem(dish, itemDto.quantity(), options, unitPrice, itemSubtotal));
+        }
+
+        if (restaurant.getMinimumOrderAmount() != null && orderSubtotal.compareTo(restaurant.getMinimumOrderAmount()) < 0) {
+            throw new IllegalArgumentException("Order subtotal does not meet the restaurant's minimum order amount of " + restaurant.getMinimumOrderAmount());
         }
 
         BigDecimal deliveryFee = BigDecimal.ZERO;
