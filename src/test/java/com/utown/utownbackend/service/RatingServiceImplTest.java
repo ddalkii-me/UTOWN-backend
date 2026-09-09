@@ -3,13 +3,13 @@ package com.utown.utownbackend.service;
 import com.utown.utownbackend.dto.RatingRequestDto;
 import com.utown.utownbackend.dto.RatingResponseDto;
 import com.utown.utownbackend.entity.Order;
+import com.utown.utownbackend.entity.OrderStatus;
 import com.utown.utownbackend.entity.Rating;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.entity.User;
 import com.utown.utownbackend.exception.ResourceConflictException;
 import com.utown.utownbackend.repository.RatingRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
-import com.utown.utownbackend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,9 +31,6 @@ class RatingServiceImplTest {
     private RatingRepository ratingRepository;
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private RestaurantRepository restaurantRepository;
 
     @Mock
@@ -50,6 +47,7 @@ class RatingServiceImplTest {
 
     @BeforeEach
     void setUp() {
+
         user = new User();
         user.setId(1L);
 
@@ -60,6 +58,7 @@ class RatingServiceImplTest {
         order.setId(3L);
         order.setUser(user);
         order.setRestaurant(restaurant);
+        order.setStatus(OrderStatus.DELIVERED);
 
         rating = new Rating();
         rating.setId(4L);
@@ -78,20 +77,11 @@ class RatingServiceImplTest {
     @Test
     void createRating_shouldCreateSuccessfully() {
 
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.of(restaurant));
-
         when(orderRepository.findById(3L))
                 .thenReturn(Optional.of(order));
 
-        order.setDeliveredAt(
-                java.time.LocalDateTime.now()
-        );
-
-        when(ratingRepository.findByUserIdAndOrderId(1L, 3L))
+        when(ratingRepository
+                .findByUserIdAndOrderIdAndDeletedAtIsNull(1L, 3L))
                 .thenReturn(Optional.empty());
 
         when(ratingRepository.save(any(Rating.class)))
@@ -99,8 +89,6 @@ class RatingServiceImplTest {
 
         RatingResponseDto response =
                 ratingService.createRating(
-                        1L,
-                        2L,
                         3L,
                         request
                 );
@@ -113,74 +101,24 @@ class RatingServiceImplTest {
         assertEquals(5, response.score());
         assertEquals("Great service!", response.comment());
 
-        verify(ratingRepository).save(any(Rating.class));
-    }
+        verify(orderRepository).findById(3L);
 
-    @Test
-    void createRating_shouldThrowWhenUserNotFound() {
+        verify(ratingRepository)
+                .findByUserIdAndOrderIdAndDeletedAtIsNull(1L, 3L);
 
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> ratingService.createRating(
-                        1L,
-                        2L,
-                        3L,
-                        request
-                )
-        );
-
-        verifyNoInteractions(
-                restaurantRepository,
-                orderRepository,
-                ratingRepository
-        );
-    }
-
-    @Test
-    void createRating_shouldThrowWhenRestaurantNotFound() {
-
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                EntityNotFoundException.class,
-                () -> ratingService.createRating(
-                        1L,
-                        2L,
-                        3L,
-                        request
-                )
-        );
-
-        verifyNoInteractions(
-                orderRepository,
-                ratingRepository
-        );
+        verify(ratingRepository)
+                .save(any(Rating.class));
     }
 
     @Test
     void createRating_shouldThrowWhenOrderNotFound() {
 
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.of(restaurant));
-
         when(orderRepository.findById(3L))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 EntityNotFoundException.class,
                 () -> ratingService.createRating(
-                        1L,
-                        2L,
                         3L,
                         request
                 )
@@ -190,27 +128,16 @@ class RatingServiceImplTest {
     }
 
     @Test
-    void createRating_shouldThrowWhenOrderBelongsToAnotherUser() {
+    void createRating_shouldThrowWhenOrderHasNoUser() {
 
-        User anotherUser = new User();
-        anotherUser.setId(99L);
-
-        order.setUser(anotherUser);
-
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.of(restaurant));
+        order.setUser(null);
 
         when(orderRepository.findById(3L))
                 .thenReturn(Optional.of(order));
 
         assertThrows(
-                ResourceConflictException.class,
+                EntityNotFoundException.class,
                 () -> ratingService.createRating(
-                        1L,
-                        2L,
                         3L,
                         request
                 )
@@ -220,27 +147,16 @@ class RatingServiceImplTest {
     }
 
     @Test
-    void createRating_shouldThrowWhenOrderBelongsToAnotherRestaurant() {
+    void createRating_shouldThrowWhenOrderHasNoRestaurant() {
 
-        Restaurant anotherRestaurant = new Restaurant();
-        anotherRestaurant.setId(99L);
-
-        order.setRestaurant(anotherRestaurant);
-
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.of(restaurant));
+        order.setRestaurant(null);
 
         when(orderRepository.findById(3L))
                 .thenReturn(Optional.of(order));
 
         assertThrows(
-                ResourceConflictException.class,
+                EntityNotFoundException.class,
                 () -> ratingService.createRating(
-                        1L,
-                        2L,
                         3L,
                         request
                 )
@@ -252,13 +168,7 @@ class RatingServiceImplTest {
     @Test
     void createRating_shouldThrowWhenOrderNotDelivered() {
 
-        order.setDeliveredAt(null);
-
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.of(restaurant));
+        order.setStatus(OrderStatus.IN_PREPARATION);
 
         when(orderRepository.findById(3L))
                 .thenReturn(Optional.of(order));
@@ -266,8 +176,6 @@ class RatingServiceImplTest {
         assertThrows(
                 ResourceConflictException.class,
                 () -> ratingService.createRating(
-                        1L,
-                        2L,
                         3L,
                         request
                 )
@@ -279,27 +187,16 @@ class RatingServiceImplTest {
     @Test
     void createRating_shouldThrowWhenOrderAlreadyRated() {
 
-        order.setDeliveredAt(
-                java.time.LocalDateTime.now()
-        );
-
-        when(userRepository.findById(1L))
-                .thenReturn(Optional.of(user));
-
-        when(restaurantRepository.findById(2L))
-                .thenReturn(Optional.of(restaurant));
-
         when(orderRepository.findById(3L))
                 .thenReturn(Optional.of(order));
 
-        when(ratingRepository.findByUserIdAndOrderId(1L, 3L))
+        when(ratingRepository
+                .findByUserIdAndOrderIdAndDeletedAtIsNull(1L, 3L))
                 .thenReturn(Optional.of(rating));
 
         assertThrows(
                 ResourceConflictException.class,
                 () -> ratingService.createRating(
-                        1L,
-                        2L,
                         3L,
                         request
                 )
@@ -315,7 +212,8 @@ class RatingServiceImplTest {
         when(restaurantRepository.findById(2L))
                 .thenReturn(Optional.of(restaurant));
 
-        when(ratingRepository.findAllByRestaurantId(2L))
+        when(ratingRepository
+                .findAllByRestaurantIdAndDeletedAtIsNull(2L))
                 .thenReturn(List.of(rating));
 
         List<RatingResponseDto> response =
@@ -323,10 +221,20 @@ class RatingServiceImplTest {
 
         assertEquals(1, response.size());
         assertEquals(4L, response.get(0).id());
+        assertEquals(1L, response.get(0).userId());
+        assertEquals(2L, response.get(0).restaurantId());
+        assertEquals(3L, response.get(0).orderId());
         assertEquals(5, response.get(0).score());
+        assertEquals(
+                "Great service!",
+                response.get(0).comment()
+        );
+
+        verify(restaurantRepository)
+                .findById(2L);
 
         verify(ratingRepository)
-                .findAllByRestaurantId(2L);
+                .findAllByRestaurantIdAndDeletedAtIsNull(2L);
     }
 
     @Test
@@ -346,7 +254,8 @@ class RatingServiceImplTest {
     @Test
     void getRatingById_shouldReturnRating() {
 
-        when(ratingRepository.findById(4L))
+        when(ratingRepository
+                .findByIdAndDeletedAtIsNull(4L))
                 .thenReturn(Optional.of(rating));
 
         RatingResponseDto response =
@@ -354,43 +263,73 @@ class RatingServiceImplTest {
 
         assertNotNull(response);
         assertEquals(4L, response.id());
+        assertEquals(1L, response.userId());
+        assertEquals(2L, response.restaurantId());
+        assertEquals(3L, response.orderId());
         assertEquals(5, response.score());
-        assertEquals("Great service!", response.comment());
+        assertEquals(
+                "Great service!",
+                response.comment()
+        );
+
+        verify(ratingRepository)
+                .findByIdAndDeletedAtIsNull(4L);
     }
 
     @Test
     void getRatingById_shouldThrowWhenRatingNotFound() {
 
-        when(ratingRepository.findById(4L))
+        when(ratingRepository
+                .findByIdAndDeletedAtIsNull(4L))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 EntityNotFoundException.class,
                 () -> ratingService.getRatingById(4L)
         );
+
+        verify(ratingRepository)
+                .findByIdAndDeletedAtIsNull(4L);
     }
 
     @Test
-    void deleteRating_shouldDeleteSuccessfully() {
+    void deleteRating_shouldSoftDeleteSuccessfully() {
 
-        when(ratingRepository.findById(4L))
+        when(ratingRepository
+                .findByIdAndDeletedAtIsNull(4L))
                 .thenReturn(Optional.of(rating));
 
         ratingService.deleteRating(4L);
 
-        verify(ratingRepository).delete(rating);
+        assertNotNull(rating.getDeletedAt());
+
+        verify(ratingRepository)
+                .findByIdAndDeletedAtIsNull(4L);
+
+        verify(ratingRepository)
+                .save(rating);
+
+        verify(ratingRepository, never())
+                .delete(any(Rating.class));
     }
 
     @Test
     void deleteRating_shouldThrowWhenRatingNotFound() {
 
-        when(ratingRepository.findById(4L))
+        when(ratingRepository
+                .findByIdAndDeletedAtIsNull(4L))
                 .thenReturn(Optional.empty());
 
         assertThrows(
                 EntityNotFoundException.class,
                 () -> ratingService.deleteRating(4L)
         );
+
+        verify(ratingRepository)
+                .findByIdAndDeletedAtIsNull(4L);
+
+        verify(ratingRepository, never())
+                .save(any(Rating.class));
 
         verify(ratingRepository, never())
                 .delete(any(Rating.class));

@@ -17,16 +17,12 @@ public class RatingController {
 
     private final RatingService ratingService;
 
-    @PostMapping("/users/{userId}/restaurants/{restaurantId}/orders/{orderId}/rating")
+    @PostMapping("/orders/{orderId}/ratings")
     public ResponseEntity<RatingResponseDto> createRating(
-            @PathVariable Long userId,
-            @PathVariable Long restaurantId,
             @PathVariable Long orderId,
             @Valid @RequestBody RatingRequestDto request
     ) {
         RatingResponseDto response = ratingService.createRating(
-                userId,
-                restaurantId,
                 orderId,
                 request
         );

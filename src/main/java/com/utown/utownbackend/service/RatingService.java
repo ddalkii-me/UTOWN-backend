@@ -8,8 +8,6 @@ import java.util.List;
 public interface RatingService {
 
     RatingResponseDto createRating(
-            Long userId,
-            Long restaurantId,
             Long orderId,
             RatingRequestDto request
     );

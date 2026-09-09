@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 
 @Entity
 @Table(name = "ratings")
@@ -33,5 +35,8 @@ public class Rating extends BaseEntity {
 
     @Column
     private String comment;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
 }

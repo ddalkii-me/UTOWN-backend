@@ -8,12 +8,20 @@ import java.util.Optional;
 
 public interface RatingRepository extends JpaRepository<Rating, Long> {
 
-    List<Rating> findAllByRestaurantId(Long restaurantId);
+    List<Rating> findAllByRestaurantIdAndDeletedAtIsNull(
+            Long restaurantId
+    );
 
-    List<Rating> findAllByUserId(Long userId);
+    List<Rating> findAllByUserIdAndDeletedAtIsNull(
+            Long userId
+    );
 
-    Optional<Rating> findByUserIdAndOrderId(
+    Optional<Rating> findByUserIdAndOrderIdAndDeletedAtIsNull(
             Long userId,
             Long orderId
+    );
+
+    Optional<Rating> findByIdAndDeletedAtIsNull(
+            Long id
     );
 }

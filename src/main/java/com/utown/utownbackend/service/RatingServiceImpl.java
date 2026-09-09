@@ -3,18 +3,19 @@ package com.utown.utownbackend.service;
 import com.utown.utownbackend.dto.RatingRequestDto;
 import com.utown.utownbackend.dto.RatingResponseDto;
 import com.utown.utownbackend.entity.Order;
+import com.utown.utownbackend.entity.OrderStatus;
 import com.utown.utownbackend.entity.Rating;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.entity.User;
 import com.utown.utownbackend.exception.ResourceConflictException;
 import com.utown.utownbackend.repository.RatingRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
-import com.utown.utownbackend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,33 +24,14 @@ import java.util.List;
 public class RatingServiceImpl implements RatingService {
 
     private final RatingRepository ratingRepository;
-    private final UserRepository userRepository;
     private final RestaurantRepository restaurantRepository;
     private final OrderRepository orderRepository;
 
     @Override
     public RatingResponseDto createRating(
-            Long userId,
-            Long restaurantId,
             Long orderId,
             RatingRequestDto request
     ) {
-
-        User user = userRepository
-                .findById(userId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "User not found with id: " + userId
-                        )
-                );
-
-        Restaurant restaurant = restaurantRepository
-                .findById(restaurantId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "Restaurant not found with id: " + restaurantId
-                        )
-                );
 
         Order order = orderRepository
                 .findById(orderId)
@@ -59,26 +41,32 @@ public class RatingServiceImpl implements RatingService {
                         )
                 );
 
-        if (!order.getUser().getId().equals(userId)) {
-            throw new ResourceConflictException(
-                    "Order does not belong to this user."
+        User user = order.getUser();
+        Restaurant restaurant = order.getRestaurant();
+
+        if (user == null) {
+            throw new EntityNotFoundException(
+                    "User associated with order not found."
             );
         }
 
-        if (!order.getRestaurant().getId().equals(restaurantId)) {
-            throw new ResourceConflictException(
-                    "Order does not belong to this restaurant."
+        if (restaurant == null) {
+            throw new EntityNotFoundException(
+                    "Restaurant associated with order not found."
             );
         }
 
-        if (order.getDeliveredAt() == null) {
+        if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new ResourceConflictException(
                     "Only delivered orders can be rated."
             );
         }
 
         if (ratingRepository
-                .findByUserIdAndOrderId(userId, orderId)
+                .findByUserIdAndOrderIdAndDeletedAtIsNull(
+                        user.getId(),
+                        orderId
+                )
                 .isPresent()) {
 
             throw new ResourceConflictException(
@@ -113,7 +101,7 @@ public class RatingServiceImpl implements RatingService {
                 );
 
         return ratingRepository
-                .findAllByRestaurantId(restaurantId)
+                .findAllByRestaurantIdAndDeletedAtIsNull(restaurantId)
                 .stream()
                 .map(this::toResponseDto)
                 .toList();
@@ -124,7 +112,7 @@ public class RatingServiceImpl implements RatingService {
     public RatingResponseDto getRatingById(Long id) {
 
         Rating rating = ratingRepository
-                .findById(id)
+                .findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException(
                                 "Rating not found with id: " + id
@@ -138,14 +126,16 @@ public class RatingServiceImpl implements RatingService {
     public void deleteRating(Long id) {
 
         Rating rating = ratingRepository
-                .findById(id)
+                .findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException(
-                                "Rating not found with id: " + id
+                                "Rating not found"
                         )
                 );
 
-        ratingRepository.delete(rating);
+        rating.setDeletedAt(LocalDateTime.now());
+
+        ratingRepository.save(rating);
     }
 
     private RatingResponseDto toResponseDto(Rating rating) {

@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -52,14 +53,12 @@ class RatingControllerTest {
                 );
 
         when(ratingService.createRating(
-                eq(10L),
-                eq(20L),
                 eq(30L),
                 any(RatingRequestDto.class)
         )).thenReturn(response);
 
         mockMvc.perform(
-                        post("/api/users/10/restaurants/20/orders/30/rating")
+                        post("/api/orders/30/ratings")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -73,8 +72,6 @@ class RatingControllerTest {
                         .value("Great service!"));
 
         verify(ratingService).createRating(
-                eq(10L),
-                eq(20L),
                 eq(30L),
                 any(RatingRequestDto.class)
         );
@@ -90,7 +87,7 @@ class RatingControllerTest {
                 );
 
         mockMvc.perform(
-                        post("/api/users/10/restaurants/20/orders/30/rating")
+                        post("/api/orders/30/ratings")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
