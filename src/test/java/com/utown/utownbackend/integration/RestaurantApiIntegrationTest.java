@@ -58,7 +58,7 @@ class RestaurantApiIntegrationTest {
     void setUp() {
         owner = new User();
         owner.setEmail("e2e_owner@example.com");
-        owner.setUsername("e2e_owner");
+        owner.setPhone("01099999999");
         owner.setName("E2E Owner");
         owner.setPassword("password");
         owner.setRole(UserRole.RESTAURANT_OWNER);
