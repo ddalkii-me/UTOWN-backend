@@ -33,7 +33,7 @@ class CategoryRepositoryTest {
     void setUp() {
         User owner = new User();
         owner.setEmail("cat_owner@test.com");
-        owner.setUsername("cat_owner");
+        owner.setPhone("01055555555");
         owner.setName("Category Owner");
         owner.setPassword("secret");
         owner.setRole(UserRole.RESTAURANT_OWNER);

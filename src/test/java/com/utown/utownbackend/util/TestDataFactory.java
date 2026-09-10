@@ -17,7 +17,7 @@ public class TestDataFactory {
         User user = new User();
         user.setId(id);
         user.setEmail("user" + id + "@example.com");
-        user.setUsername("username" + id);
+        user.setPhone("010" + String.format("%08d", id != null ? id : 0));
         user.setName("Test User " + id);
         user.setPassword("hashedpassword" + id);
         user.setRole(UserRole.CUSTOMER);

@@ -26,10 +26,10 @@ class UserRepositoryTest {
     @Autowired
     private UserRepository userRepository;
 
-    private User createUser(String email, String username, LocalDateTime deletedAt) {
+    private User createUser(String email, String phone, LocalDateTime deletedAt) {
         User user = new User();
         user.setEmail(email);
-        user.setUsername(username);
+        user.setPhone(phone);
         user.setName("Test User");
         user.setPassword("secret");
         user.setRole(UserRole.CUSTOMER);
@@ -41,8 +41,8 @@ class UserRepositoryTest {
     @Test
     @DisplayName("findByIdAndDeletedAtIsNull - returns user if active, empty if deleted")
     void findByIdAndDeletedAtIsNull_success() {
-        User active = createUser("active@test.com", "active_u", null);
-        User deleted = createUser("deleted@test.com", "deleted_u", LocalDateTime.now());
+        User active = createUser("active@test.com", "01011112222", null);
+        User deleted = createUser("deleted@test.com", "01033334444", LocalDateTime.now());
         entityManager.flush();
 
         Optional<User> foundActive = userRepository.findByIdAndDeletedAtIsNull(active.getId());
@@ -50,6 +50,21 @@ class UserRepositoryTest {
 
         assertThat(foundActive).isPresent();
         assertThat(foundActive.get().getEmail()).isEqualTo("active@test.com");
+        assertThat(foundDeleted).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByPhoneAndDeletedAtIsNull - returns user if active, empty if deleted")
+    void findByPhoneAndDeletedAtIsNull_success() {
+        User active = createUser("active2@test.com", "01055556666", null);
+        User deleted = createUser("deleted2@test.com", "01077778888", LocalDateTime.now());
+        entityManager.flush();
+
+        Optional<User> foundActive = userRepository.findByPhoneAndDeletedAtIsNull("01055556666");
+        Optional<User> foundDeleted = userRepository.findByPhoneAndDeletedAtIsNull("01077778888");
+
+        assertThat(foundActive).isPresent();
+        assertThat(foundActive.get().getPhone()).isEqualTo("01055556666");
         assertThat(foundDeleted).isEmpty();
     }
 }

@@ -35,7 +35,7 @@ class RestaurantWorkingHoursRepositoryTest {
     void setUp() {
         User owner = new User();
         owner.setEmail("hours_owner@test.com");
-        owner.setUsername("hours_owner");
+        owner.setPhone("01033333333");
         owner.setName("Hours Owner");
         owner.setPassword("secret");
         owner.setRole(UserRole.RESTAURANT_OWNER);
