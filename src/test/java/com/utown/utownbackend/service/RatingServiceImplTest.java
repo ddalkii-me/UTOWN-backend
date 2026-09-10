@@ -8,6 +8,7 @@ import com.utown.utownbackend.entity.Rating;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.entity.User;
 import com.utown.utownbackend.exception.ResourceConflictException;
+import com.utown.utownbackend.repository.OrderRepository;
 import com.utown.utownbackend.repository.RatingRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
 import jakarta.persistence.EntityNotFoundException;
