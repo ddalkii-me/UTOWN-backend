@@ -53,10 +53,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             ? roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
                             : Collections.emptyList();
 
-                    UserDetails userDetails = User.withUsername(phone)
-                            .password("")
-                            .authorities(authorities)
-                            .build();
+                    Long userId = jwtUtil.extractClaim(token, claims -> claims.get("userId", Long.class));
+                    
+                    com.utown.utownbackend.entity.User proxyUser = new com.utown.utownbackend.entity.User();
+                    proxyUser.setId(userId);
+                    proxyUser.setPhone(phone);
+                    if (roles != null && !roles.isEmpty()) {
+                        try {
+                            String roleStr = roles.get(0).replace("ROLE_", "");
+                            proxyUser.setRole(com.utown.utownbackend.entity.UserRole.valueOf(roleStr));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    proxyUser.setStatus(com.utown.utownbackend.entity.UserStatus.ACTIVE);
+
+                    UserDetails userDetails = new CustomUserDetails(proxyUser);
 
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                             userDetails,

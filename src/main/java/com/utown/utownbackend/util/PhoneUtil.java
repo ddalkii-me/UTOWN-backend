@@ -10,7 +10,7 @@ public final class PhoneUtil {
     /**
      * Normalizes a phone number to standard E.164-like format (or at least consistently formatted).
      * Strips whitespace, dashes, and other non-digit characters.
-     * Assumes a default '+1' prefix if it's exactly 10 digits without a country code.
+     * Assumes a default '+82' (South Korea) prefix if it's missing a country code.
      *
      * @param phone the raw phone number string
      * @return normalized phone number, or null if input is null or blank

@@ -102,7 +102,8 @@ public class AuthServiceImpl implements AuthService {
                 .map(user -> {
                     CustomUserDetails userDetails = new CustomUserDetails(user);
                     String token = jwtUtil.generateToken(userDetails);
-                    return new AuthResponseDto(token, request.refreshToken());
+                    RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
+                    return new AuthResponseDto(token, newRefreshToken.getToken());
                 })
                 .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
     }

@@ -55,8 +55,10 @@ class AuthServiceImplTest {
         RegisterRequestDto request = new RegisterRequestDto(
                 "010-1234-5678",
                 "secretPassword",
+                "secretPassword",
                 "Test Customer",
-                "test@example.com"
+                "test@example.com",
+                "123456"
         );
 
         when(userRepository.existsByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(false);
@@ -96,8 +98,10 @@ class AuthServiceImplTest {
         RegisterRequestDto request = new RegisterRequestDto(
                 "010-1234-5678",
                 "secretPassword",
+                "secretPassword",
                 "Test Customer",
-                "test@example.com"
+                "test@example.com",
+                "123456"
         );
 
         when(userRepository.existsByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(true);
@@ -115,8 +119,10 @@ class AuthServiceImplTest {
         RegisterRequestDto request = new RegisterRequestDto(
                 "010-1234-5678",
                 "secretPassword",
+                "secretPassword",
                 "Test Customer",
-                "test@example.com"
+                "test@example.com",
+                "123456"
         );
 
         when(userRepository.existsByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(false);

@@ -26,7 +26,7 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken createRefreshToken(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
@@ -57,7 +57,7 @@ public class RefreshTokenService {
 
     @Transactional
     public void deleteByUserId(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         refreshTokenRepository.deleteByUser(user);
     }

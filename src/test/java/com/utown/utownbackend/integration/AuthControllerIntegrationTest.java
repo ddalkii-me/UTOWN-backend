@@ -46,9 +46,11 @@ class AuthControllerIntegrationTest {
     void register_success() throws Exception {
         RegisterRequestDto request = new RegisterRequestDto(
                 "010-1234-5678",
-                "strongPassword123",
+                "securePass123",
+                "securePass123",
                 "Hong Gildong",
-                "gildong@example.com"
+                "gildong@example.com",
+                "123456"
         );
 
         MvcResult result = mockMvc.perform(post("/api/auth/register")
@@ -78,8 +80,10 @@ class AuthControllerIntegrationTest {
         RegisterRequestDto request = new RegisterRequestDto(
                 "invalid-phone",
                 "strongPassword123",
+                "strongPassword123",
                 "Hong Gildong",
-                "gildong@example.com"
+                "gildong@example.com",
+                "123456"
         );
 
         mockMvc.perform(post("/api/auth/register")
@@ -94,9 +98,11 @@ class AuthControllerIntegrationTest {
         // First register
         RegisterRequestDto registerRequest = new RegisterRequestDto(
                 "010-9876-5432",
-                "password123",
-                "Lee Soon Shin",
-                "soonshin@example.com"
+                "loginPass123",
+                "loginPass123",
+                "Login Test User",
+                "login.test@example.com",
+                "123456"
         );
 
         mockMvc.perform(post("/api/auth/register")
@@ -105,7 +111,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated());
 
         // Then login with formatted phone
-        LoginRequestDto loginRequest = new LoginRequestDto("010-9876-5432", "password123");
+        LoginRequestDto loginRequest = new LoginRequestDto("010-9876-5432", "loginPass123");
 
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,8 +135,10 @@ class AuthControllerIntegrationTest {
         RegisterRequestDto first = new RegisterRequestDto(
                 "010-5555-4444",
                 "password123",
+                "password123",
                 "User One",
-                "one@example.com"
+                "one@example.com",
+                "123456"
         );
 
         mockMvc.perform(post("/api/auth/register")
@@ -140,9 +148,11 @@ class AuthControllerIntegrationTest {
 
         RegisterRequestDto duplicate = new RegisterRequestDto(
                 "010-5555-4444",
-                "password999",
-                "User Two",
-                "two@example.com"
+                "conflictPass123",
+                "conflictPass123",
+                "Conflict Test 2",
+                "conflict2@example.com",
+                "123456"
         );
 
         mockMvc.perform(post("/api/auth/register")

@@ -16,13 +16,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class User extends BaseEntity{
 
-    @Column(name = "phone", nullable = false, unique = true, length = 20)
+    @Column(name = "phone", nullable = false, length = 20)
     private String phone;
 
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String email;
 
     @Column(name = "password_hash", nullable = false)
