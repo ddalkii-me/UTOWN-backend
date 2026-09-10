@@ -36,6 +36,12 @@ public final class PhoneUtil {
             }
         }
 
+        // Check if there are enough digits (at least 7 for local, usually 10+ for international)
+        long digitCount = normalized.chars().filter(Character::isDigit).count();
+        if (digitCount < 7) {
+            throw new IllegalArgumentException("Phone number does not contain enough digits");
+        }
+
         return normalized;
     }
 }

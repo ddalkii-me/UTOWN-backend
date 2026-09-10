@@ -30,4 +30,7 @@ public class RefreshToken {
     @Column(nullable = false)
     private Instant expiryDate;
 
+    @Version
+    private Long version;
+
 }

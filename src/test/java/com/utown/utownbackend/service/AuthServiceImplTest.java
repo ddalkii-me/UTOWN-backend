@@ -183,4 +183,100 @@ class AuthServiceImplTest {
                 .isInstanceOf(BadCredentialsException.class)
                 .hasMessageContaining("Bad credentials");
     }
+
+    @Test
+    @DisplayName("refreshToken - returns new tokens when valid refresh token is provided")
+    void refreshToken_success() {
+        com.utown.utownbackend.dto.TokenRefreshRequestDto request = new com.utown.utownbackend.dto.TokenRefreshRequestDto("valid-refresh-token");
+        com.utown.utownbackend.entity.RefreshToken rt = new com.utown.utownbackend.entity.RefreshToken();
+        User user = new User();
+        user.setId(1L);
+        user.setPhone("+821012345678");
+        user.setStatus(UserStatus.ACTIVE);
+        rt.setUser(user);
+        
+        when(refreshTokenService.findByToken("valid-refresh-token")).thenReturn(java.util.Optional.of(rt));
+        when(refreshTokenService.verifyExpiration(rt)).thenReturn(rt);
+        when(jwtUtil.generateToken(any(com.utown.utownbackend.security.CustomUserDetails.class))).thenReturn("new-jwt-token");
+        
+        com.utown.utownbackend.entity.RefreshToken newRt = new com.utown.utownbackend.entity.RefreshToken();
+        newRt.setToken("valid-refresh-token");
+        when(refreshTokenService.createRefreshToken(1L)).thenReturn(newRt);
+        
+        AuthResponseDto response = authService.refreshToken(request);
+        
+        assertThat(response).isNotNull();
+        assertThat(response.token()).isEqualTo("new-jwt-token");
+        assertThat(response.refreshToken()).isEqualTo("valid-refresh-token");
+    }
+
+    @Test
+    @DisplayName("refreshToken - throws exception when refresh token is invalid")
+    void refreshToken_invalidToken_throwsException() {
+        com.utown.utownbackend.dto.TokenRefreshRequestDto request = new com.utown.utownbackend.dto.TokenRefreshRequestDto("invalid-refresh-token");
+        
+        when(refreshTokenService.findByToken("invalid-refresh-token")).thenReturn(java.util.Optional.empty());
+        
+        assertThatThrownBy(() -> authService.refreshToken(request))
+                .isInstanceOf(com.utown.utownbackend.exception.InvalidTokenException.class)
+                .hasMessageContaining("Refresh token is invalid or missing!");
+    }
+
+    @Test
+    @DisplayName("login - throws DisabledException when user is suspended")
+    void login_suspendedUser_throwsDisabledException() {
+        LoginRequestDto request = new LoginRequestDto("010-1234-5678", "secretPassword");
+
+        User user = new User();
+        user.setId(1L);
+        user.setPhone("+821012345678");
+        user.setPassword("hashedPassword");
+        user.setStatus(UserStatus.SUSPENDED);
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(authentication);
+        
+        when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(java.util.Optional.of(user));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(org.springframework.security.authentication.DisabledException.class)
+                .hasMessageContaining("User is not active");
+    }
+
+    @Test
+    @DisplayName("refreshToken - throws DisabledException when user is suspended")
+    void refreshToken_suspendedUser_throwsDisabledException() {
+        com.utown.utownbackend.dto.TokenRefreshRequestDto request = new com.utown.utownbackend.dto.TokenRefreshRequestDto("valid-refresh-token");
+        com.utown.utownbackend.entity.RefreshToken rt = new com.utown.utownbackend.entity.RefreshToken();
+        User user = new User();
+        user.setId(1L);
+        user.setPhone("+821012345678");
+        user.setStatus(UserStatus.SUSPENDED);
+        rt.setUser(user);
+        
+        when(refreshTokenService.findByToken("valid-refresh-token")).thenReturn(java.util.Optional.of(rt));
+        when(refreshTokenService.verifyExpiration(rt)).thenReturn(rt);
+        
+        assertThatThrownBy(() -> authService.refreshToken(request))
+                .isInstanceOf(org.springframework.security.authentication.DisabledException.class)
+                .hasMessageContaining("User is not active");
+    }
+
+    @Test
+    @DisplayName("logout - deletes refresh token by username")
+    void logout_success() {
+        User user = new User();
+        user.setId(1L);
+        user.setPhone("+821012345678");
+        
+        when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(java.util.Optional.of(user));
+        
+        authService.logout("+821012345678");
+        
+        verify(refreshTokenService).deleteByUserId(1L);
+    }
 }

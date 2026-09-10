@@ -87,6 +87,11 @@ public class AuthServiceImpl implements AuthService {
         
         User user = userRepository.findByPhoneAndDeletedAtIsNull(normalizedPhone)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new org.springframework.security.authentication.DisabledException("User is not active");
+        }
+        
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
         log.info("User with phone: {} successfully authenticated", normalizedPhone);
@@ -100,12 +105,15 @@ public class AuthServiceImpl implements AuthService {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
                 .map(user -> {
+                    if (user.getStatus() != UserStatus.ACTIVE) {
+                        throw new org.springframework.security.authentication.DisabledException("User is not active");
+                    }
                     CustomUserDetails userDetails = new CustomUserDetails(user);
                     String token = jwtUtil.generateToken(userDetails);
                     RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
                     return new AuthResponseDto(token, newRefreshToken.getToken());
                 })
-                .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
+                .orElseThrow(() -> new com.utown.utownbackend.exception.InvalidTokenException("Refresh token is invalid or missing!"));
     }
 
     @Override
