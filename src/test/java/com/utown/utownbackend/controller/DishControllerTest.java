@@ -164,13 +164,13 @@ class DishControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/dishes/{id} - should return 500 when active option groups exist")
+    @DisplayName("DELETE /api/dishes/{id} - should return 400 when active option groups exist")
     void deleteDishById_shouldReturn500WhenOptionGroupsExist() throws Exception {
         doThrow(new IllegalStateException("Cannot delete Dish while it has active Option Groups"))
                 .when(dishService).deleteDish(1L);
 
         mockMvc.perform(delete("/api/dishes/{id}", 1L))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
