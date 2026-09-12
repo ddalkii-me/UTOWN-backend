@@ -141,4 +141,49 @@ public class JwtUtil {
             return false;
         }
     }
+
+    public String generatePasswordResetToken(String phone, Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("purpose", "PASSWORD_RESET");
+        if (userId != null) {
+            claims.put("userId", userId);
+        }
+        long resetTokenExpirationMs = 15 * 60 * 1000L; // 15 minutes
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + resetTokenExpirationMs);
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(phone)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    public boolean validatePasswordResetToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            if (isTokenExpired(token)) {
+                return false;
+            }
+            return "PASSWORD_RESET".equals(claims.get("purpose"));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public String extractPasswordResetPhone(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public Long extractPasswordResetUserId(String token) {
+        return extractClaim(token, claims -> {
+            Object userIdObj = claims.get("userId");
+            if (userIdObj instanceof Number) {
+                return ((Number) userIdObj).longValue();
+            }
+            return null;
+        });
+    }
 }

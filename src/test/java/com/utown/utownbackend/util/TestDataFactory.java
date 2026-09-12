@@ -257,4 +257,17 @@ public class TestDataFactory {
     public static DishOptionResponseDto createDishOptionResponseDto(Long id, Long optionGroupId, String name) {
         return new DishOptionResponseDto(id, optionGroupId, name, new BigDecimal("1500"), 1, DishOptionStatus.AVAILABLE, null);
     }
+
+    public static AuthCode createAuthCode(Long id, User user, String codeHash, AuthCodePurpose purpose) {
+        AuthCode authCode = new AuthCode();
+        authCode.setId(id);
+        authCode.setUser(user);
+        authCode.setCodeHash(codeHash);
+        authCode.setPurpose(purpose);
+        authCode.setAttempts(0);
+        authCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+        authCode.setCreatedAt(LocalDateTime.now());
+        authCode.setUpdatedAt(LocalDateTime.now());
+        return authCode;
+    }
 }

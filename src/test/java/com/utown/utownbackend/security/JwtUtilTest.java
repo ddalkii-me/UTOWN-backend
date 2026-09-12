@@ -94,4 +94,29 @@ class JwtUtilTest {
         String role = jwtUtil.extractClaim(token, claims -> claims.get("role", String.class));
         assertThat(role).isEqualTo("CUSTOMER");
     }
+
+    @Test
+    @DisplayName("generatePasswordResetToken - generates valid reset token and extracts phone and userId")
+    void generatePasswordResetToken_success() {
+        String resetToken = jwtUtil.generatePasswordResetToken("+821012345678", 1L);
+
+        assertThat(resetToken).isNotBlank();
+        assertThat(jwtUtil.validatePasswordResetToken(resetToken)).isTrue();
+        assertThat(jwtUtil.extractPasswordResetPhone(resetToken)).isEqualTo("+821012345678");
+        assertThat(jwtUtil.extractPasswordResetUserId(resetToken)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("validatePasswordResetToken - returns false for normal auth token (wrong purpose)")
+    void validatePasswordResetToken_wrongPurpose_returnsFalse() {
+        String normalToken = jwtUtil.generateToken(userDetails);
+
+        assertThat(jwtUtil.validatePasswordResetToken(normalToken)).isFalse();
+    }
+
+    @Test
+    @DisplayName("validatePasswordResetToken - returns false for malformed token")
+    void validatePasswordResetToken_malformedToken_returnsFalse() {
+        assertThat(jwtUtil.validatePasswordResetToken("invalid.token.string")).isFalse();
+    }
 }
