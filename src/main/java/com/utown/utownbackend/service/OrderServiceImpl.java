@@ -29,6 +29,10 @@ public class OrderServiceImpl implements OrderService {
     private final DishOptionRepository dishOptionRepository;
     private final DishOptionGroupRepository dishOptionGroupRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final CartItemOptionRepository cartItemOptionRepository;
+    private final RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
 
     private record PreparedItem(
             Dish dish,
@@ -56,6 +60,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (!address.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("Address does not belong to user");
+        }
+
+        if (address.getDeliveryArea() == null || !restaurantDeliveryAreaRepository.existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(restaurant.getId(), address.getDeliveryArea().getId())) {
+            throw new IllegalArgumentException("Restaurant does not deliver to the selected address area");
         }
 
         if (request.items() == null || request.items().isEmpty()) {
@@ -290,7 +298,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.IN_PREPARATION) {
+        if (order.getStatus() != OrderStatus.IN_PREPARATION && order.getStatus() != OrderStatus.READY_FOR_PICKUP) {
             throw new IllegalStateException("Order cannot be completed from status: " + order.getStatus());
         }
 
@@ -321,6 +329,224 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderRepository.save(order);
         User actor = resolveActor(savedOrder);
         recordStatusHistory(savedOrder, OrderStatus.DECLINED, actor, request.reason());
+
+        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto checkout(CheckoutRequestDto request) {
+        User user = userRepository.findByIdAndDeletedAtIsNull(request.userId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + request.userId()));
+
+        Cart cart = cartRepository.findByUserIdAndStatus(request.userId(), CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalStateException("No active cart found for user with id: " + request.userId()));
+
+        List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
+        if (cartItems.isEmpty()) {
+            throw new IllegalStateException("Cart is empty");
+        }
+
+        Address address = addressRepository.findByIdAndDeletedAtIsNull(request.addressId())
+                .orElseThrow(() -> new EntityNotFoundException("Address not found with id: " + request.addressId()));
+
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Address does not belong to user");
+        }
+
+        Restaurant restaurant = cart.getRestaurant();
+        if (restaurant.getStatus() == RestaurantStatus.CLOSED) {
+            throw new IllegalArgumentException("Cannot place order: Restaurant is closed");
+        }
+
+        if (address.getDeliveryArea() == null || !restaurantDeliveryAreaRepository.existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(restaurant.getId(), address.getDeliveryArea().getId())) {
+            throw new IllegalArgumentException("Restaurant does not deliver to the selected address area");
+        }
+
+        List<Long> cartItemIds = cartItems.stream().map(BaseEntity::getId).toList();
+        List<CartItemOption> cartItemOptions = cartItemIds.isEmpty()
+                ? List.of()
+                : cartItemOptionRepository.findAllByCartItemIdIn(cartItemIds);
+        Map<Long, List<CartItemOption>> optionsByCartItemId = cartItemOptions.stream()
+                .collect(Collectors.groupingBy(opt -> opt.getCartItem().getId()));
+
+        BigDecimal orderSubtotal = BigDecimal.ZERO;
+        List<PreparedItem> preparedItems = new ArrayList<>();
+
+        for (CartItem cartItem : cartItems) {
+            if (cartItem.getQuantity() == null || cartItem.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Item quantity must be greater than zero");
+            }
+
+            Dish dish = dishRepository.findByIdAndDeletedAtIsNull(cartItem.getDish().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Dish not found with id: " + cartItem.getDish().getId()));
+
+            if (dish.getStatus() != DishStatus.AVAILABLE) {
+                throw new IllegalArgumentException("Dish '" + dish.getName() + "' is currently unavailable");
+            }
+
+            if (!dish.getRestaurant().getId().equals(restaurant.getId())) {
+                throw new IllegalArgumentException("Dish '" + dish.getName() + "' does not belong to restaurant '" + restaurant.getName() + "'");
+            }
+
+            List<CartItemOption> itemOptions = optionsByCartItemId.getOrDefault(cartItem.getId(), List.of());
+            List<DishOption> dishOptions = new ArrayList<>();
+            BigDecimal optionsUnitSum = BigDecimal.ZERO;
+
+            for (CartItemOption itemOpt : itemOptions) {
+                DishOption dishOption = dishOptionRepository.findByIdAndDeletedAtIsNull(itemOpt.getDishOption().getId())
+                        .orElseThrow(() -> new EntityNotFoundException("Dish option not found with id: " + itemOpt.getDishOption().getId()));
+
+                if (dishOption.getStatus() != DishOptionStatus.AVAILABLE) {
+                    throw new IllegalArgumentException("Dish option '" + dishOption.getName() + "' is currently unavailable");
+                }
+
+                if (dishOption.getOptionGroup().getDeletedAt() != null || dishOption.getOptionGroup().getDish().getDeletedAt() != null) {
+                    throw new EntityNotFoundException("Dish option not found or inactive with id: " + dishOption.getId());
+                }
+
+                if (!dishOption.getOptionGroup().getDish().getId().equals(dish.getId())) {
+                    throw new IllegalArgumentException("Dish option '" + dishOption.getName() + "' does not belong to dish '" + dish.getName() + "'");
+                }
+
+                dishOptions.add(dishOption);
+                optionsUnitSum = optionsUnitSum.add(dishOption.getAdditionalPrice());
+            }
+
+            List<DishOptionGroup> activeGroups = dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(dish.getId());
+            Map<Long, Long> groupSelectionCounts = dishOptions.stream()
+                    .collect(Collectors.groupingBy(opt -> opt.getOptionGroup().getId(), Collectors.counting()));
+
+            for (DishOptionGroup group : activeGroups) {
+                long count = groupSelectionCounts.getOrDefault(group.getId(), 0L);
+
+                if (Boolean.TRUE.equals(group.getRequired()) && count == 0) {
+                    throw new IllegalArgumentException("Missing required option group '" + group.getName() + "' for dish '" + dish.getName() + "'");
+                }
+                if (group.getMinSelections() != null && count < group.getMinSelections()) {
+                    throw new IllegalArgumentException("Minimum selections not met for group '" + group.getName() + "' in dish '" + dish.getName() + "'");
+                }
+                if (group.getMaxSelections() != null && count > group.getMaxSelections()) {
+                    throw new IllegalArgumentException("Maximum selections exceeded for group '" + group.getName() + "' in dish '" + dish.getName() + "'");
+                }
+            }
+
+            BigDecimal unitPrice = dish.getPrice();
+            BigDecimal itemUnitTotal = unitPrice.add(optionsUnitSum);
+            BigDecimal itemSubtotal = itemUnitTotal.multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+
+            orderSubtotal = orderSubtotal.add(itemSubtotal);
+            preparedItems.add(new PreparedItem(dish, cartItem.getQuantity(), dishOptions, unitPrice, itemSubtotal));
+        }
+
+        if (restaurant.getMinimumOrderAmount() != null && orderSubtotal.compareTo(restaurant.getMinimumOrderAmount()) < 0) {
+            throw new IllegalArgumentException("Order subtotal does not meet the restaurant's minimum order amount of " + restaurant.getMinimumOrderAmount());
+        }
+
+        BigDecimal deliveryFee = BigDecimal.ZERO;
+        BigDecimal totalAmount = orderSubtotal.add(deliveryFee);
+
+        String orderNumber = "ORD-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        Order order = new Order();
+        order.setOrderNumber(orderNumber);
+        order.setUser(user);
+        order.setRestaurant(restaurant);
+        order.setAddress(address);
+        order.setStatus(OrderStatus.PENDING);
+        order.setSubtotal(orderSubtotal);
+        order.setDeliveryFee(deliveryFee);
+        order.setTotalAmount(totalAmount);
+        order.setCurrency("USD");
+        order.setPaymentMethod(request.paymentMethod());
+        order.setPaymentStatus(PaymentStatus.PENDING);
+        order.setDeliveryNote(request.deliveryNote());
+
+        Order savedOrder = orderRepository.save(order);
+
+        List<OrderItemResponseDto> orderItemDtos = new ArrayList<>();
+        for (PreparedItem prep : preparedItems) {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(savedOrder);
+            orderItem.setDish(prep.dish());
+            orderItem.setDishName(prep.dish().getName());
+            orderItem.setUnitPrice(prep.unitPrice());
+            orderItem.setQuantity(prep.quantity());
+            orderItem.setSubtotal(prep.subtotal());
+
+            OrderItem savedOrderItem = orderItemRepository.save(orderItem);
+
+            List<OrderItemOptionResponseDto> optionDtos = new ArrayList<>();
+            for (DishOption dishOption : prep.options()) {
+                OrderItemOption orderItemOption = new OrderItemOption();
+                orderItemOption.setOrderItem(savedOrderItem);
+                orderItemOption.setDishOption(dishOption);
+                orderItemOption.setOptionName(dishOption.getName());
+                orderItemOption.setOptionPrice(dishOption.getAdditionalPrice());
+
+                OrderItemOption savedItemOption = orderItemOptionRepository.save(orderItemOption);
+                optionDtos.add(new OrderItemOptionResponseDto(savedItemOption.getId(), savedItemOption.getOptionName(), savedItemOption.getOptionPrice()));
+            }
+
+            orderItemDtos.add(new OrderItemResponseDto(
+                    savedOrderItem.getId(),
+                    savedOrderItem.getDish().getId(),
+                    savedOrderItem.getDishName(),
+                    savedOrderItem.getUnitPrice(),
+                    savedOrderItem.getQuantity(),
+                    savedOrderItem.getSubtotal(),
+                    optionDtos
+            ));
+        }
+
+        cart.setStatus(CartStatus.EXPIRED);
+        cartRepository.save(cart);
+
+        recordStatusHistory(savedOrder, OrderStatus.PENDING, user, "Order created via checkout");
+
+        return toOrderResponseDto(savedOrder, orderItemDtos);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto markReadyForPickup(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.IN_PREPARATION) {
+            throw new IllegalStateException("Order cannot be marked ready for pickup from status: " + order.getStatus());
+        }
+
+        order.setStatus(OrderStatus.READY_FOR_PICKUP);
+        order.setReadyAt(LocalDateTime.now());
+
+        Order savedOrder = orderRepository.save(order);
+        User actor = resolveActor(savedOrder);
+        recordStatusHistory(savedOrder, OrderStatus.READY_FOR_PICKUP, actor, null);
+
+        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDto cancelOrder(Long id, OrderCancelRequestDto request) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalStateException("Order cannot be cancelled from status: " + order.getStatus());
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(LocalDateTime.now());
+        order.setRejectionReason(request.reason());
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            order.setPaymentStatus(PaymentStatus.REFUNDED);
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        User actor = order.getUser();
+        recordStatusHistory(savedOrder, OrderStatus.CANCELLED, actor, request.reason());
 
         return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
     }

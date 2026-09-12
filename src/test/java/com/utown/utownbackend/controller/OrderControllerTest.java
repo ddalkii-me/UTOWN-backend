@@ -173,4 +173,46 @@ class OrderControllerTest {
         assertEquals("Too busy", response.getBody().rejectionReason());
         verify(orderService).declineOrder(1L, request);
     }
+
+    @Test
+    void checkout_returnsCreatedStatusAndBody() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, "Leave at door");
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
+        when(orderService.checkout(request)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.checkout(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1L, response.getBody().id());
+        assertEquals(OrderStatus.PENDING, response.getBody().status());
+        verify(orderService).checkout(request);
+    }
+
+    @Test
+    void markReadyForPickup_returnsOk() {
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.READY_FOR_PICKUP);
+        when(orderService.markReadyForPickup(1L)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.markReadyForPickup(1L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.READY_FOR_PICKUP, response.getBody().status());
+        verify(orderService).markReadyForPickup(1L);
+    }
+
+    @Test
+    void cancelOrder_returnsOk() {
+        OrderCancelRequestDto request = new OrderCancelRequestDto("Customer changed their mind");
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.CANCELLED);
+        when(orderService.cancelOrder(1L, request)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.cancelOrder(1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.CANCELLED, response.getBody().status());
+        verify(orderService).cancelOrder(1L, request);
+    }
 }

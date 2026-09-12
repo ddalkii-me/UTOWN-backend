@@ -1,9 +1,6 @@
 package com.utown.utownbackend.controller;
 
-import com.utown.utownbackend.dto.OrderAcceptRequestDto;
-import com.utown.utownbackend.dto.OrderDeclineRequestDto;
-import com.utown.utownbackend.dto.OrderRequestDto;
-import com.utown.utownbackend.dto.OrderResponseDto;
+import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.OrderStatus;
 import com.utown.utownbackend.service.OrderService;
 import jakarta.validation.Valid;
@@ -26,6 +23,14 @@ public class OrderController {
             @Valid @RequestBody OrderRequestDto request
     ) {
         OrderResponseDto response = orderService.createOrder(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/checkout")
+    public ResponseEntity<OrderResponseDto> checkout(
+            @Valid @RequestBody CheckoutRequestDto request
+    ) {
+        OrderResponseDto response = orderService.checkout(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -60,11 +65,26 @@ public class OrderController {
         return ResponseEntity.ok(orderService.startPreparation(id));
     }
 
+    @PatchMapping("/{id}/ready")
+    public ResponseEntity<OrderResponseDto> markReadyForPickup(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(orderService.markReadyForPickup(id));
+    }
+
     @PatchMapping("/{id}/complete")
     public ResponseEntity<OrderResponseDto> completeOrder(
             @PathVariable Long id
     ) {
         return ResponseEntity.ok(orderService.completeOrder(id));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<OrderResponseDto> cancelOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody OrderCancelRequestDto request
+    ) {
+        return ResponseEntity.ok(orderService.cancelOrder(id, request));
     }
 
     @PatchMapping("/{id}/decline")
