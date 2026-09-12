@@ -360,5 +360,43 @@ public class TestDataFactory {
                 LocalDateTime.now()
         );
     }
+
+    public static Notification createNotification(
+            Long id, User user, NotificationType type, String title, String message, Boolean isRead
+    ) {
+        Notification notification = new Notification();
+        notification.setId(id);
+        notification.setUser(user);
+        notification.setType(type != null ? type : NotificationType.SYSTEM);
+        notification.setTitle(title != null ? title : "Test Title");
+        notification.setMessage(message != null ? message : "Test Message");
+        notification.setIsRead(isRead != null ? isRead : false);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setUpdatedAt(LocalDateTime.now());
+        return notification;
+    }
+
+    public static NotificationRequestDto createNotificationRequestDto(Long userId, NotificationType type) {
+        return new NotificationRequestDto(
+                userId,
+                type != null ? type : NotificationType.SYSTEM,
+                "Order Update",
+                "Your order has been accepted"
+        );
+    }
+
+    public static NotificationResponseDto createNotificationResponseDto(Long id, Long userId) {
+        return new NotificationResponseDto(
+                id,
+                userId,
+                NotificationType.ORDER_STATUS_CHANGED,
+                "Order Update",
+                "Your order has been accepted",
+                false,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
 }
+
 
