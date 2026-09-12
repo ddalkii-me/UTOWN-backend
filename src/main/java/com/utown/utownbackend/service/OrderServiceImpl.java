@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -221,8 +222,10 @@ public class OrderServiceImpl implements OrderService {
         Specification<Order> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            CustomUserDetails principal =
-                    (CustomUserDetails) authentication.getPrincipal();
+            if (authentication == null
+                    || !(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+                throw new AccessDeniedException("Authentication required");
+            }
 
             if (principal.getRole() == UserRole.CUSTOMER) {
                 // Customers can only see their own orders.
@@ -343,6 +346,7 @@ public class OrderServiceImpl implements OrderService {
         // means the food preparation is finished
         // and the order is ready for pickup.
         order.setStatus(OrderStatus.READY_FOR_PICKUP);
+        order.setReadyAt(LocalDateTime.now());
 
         Order savedOrder = orderRepository.save(order);
         User actor = resolveActor(savedOrder);
