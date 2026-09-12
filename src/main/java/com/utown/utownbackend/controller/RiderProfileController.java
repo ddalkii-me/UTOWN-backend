@@ -1,0 +1,88 @@
+package com.utown.utownbackend.controller;
+
+import com.utown.utownbackend.dto.*;
+import com.utown.utownbackend.entity.RiderStatus;
+import com.utown.utownbackend.service.RiderProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/riders")
+@RequiredArgsConstructor
+public class RiderProfileController {
+
+    private final RiderProfileService riderProfileService;
+
+    @PostMapping
+    public ResponseEntity<RiderProfileResponseDto> createRiderProfile(
+            @Valid @RequestBody RiderProfileRequestDto request
+    ) {
+        RiderProfileResponseDto response = riderProfileService.createRiderProfile(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<RiderProfileResponseDto>> getAllRiderProfiles(
+            @RequestParam(required = false) RiderStatus status,
+            @RequestParam(required = false) Boolean availability
+    ) {
+        List<RiderProfileResponseDto> list = riderProfileService.getAllRiderProfiles(status, availability);
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<RiderProfileResponseDto> getRiderProfileById(
+            @PathVariable Long id
+    ) {
+        RiderProfileResponseDto response = riderProfileService.getRiderProfileById(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<RiderProfileResponseDto> getRiderProfileByUserId(
+            @PathVariable Long userId
+    ) {
+        RiderProfileResponseDto response = riderProfileService.getRiderProfileByUserId(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<RiderProfileResponseDto> updateRiderProfile(
+            @PathVariable Long id,
+            @Valid @RequestBody RiderProfileUpdateRequestDto request
+    ) {
+        RiderProfileResponseDto response = riderProfileService.updateRiderProfile(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/availability")
+    public ResponseEntity<RiderProfileResponseDto> updateAvailability(
+            @PathVariable Long id,
+            @Valid @RequestBody RiderAvailabilityUpdateRequestDto request
+    ) {
+        RiderProfileResponseDto response = riderProfileService.updateAvailability(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<RiderProfileResponseDto> updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody RiderStatusUpdateRequestDto request
+    ) {
+        RiderProfileResponseDto response = riderProfileService.updateStatus(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRiderProfile(
+            @PathVariable Long id
+    ) {
+        riderProfileService.deleteRiderProfile(id);
+        return ResponseEntity.noContent().build();
+    }
+}
