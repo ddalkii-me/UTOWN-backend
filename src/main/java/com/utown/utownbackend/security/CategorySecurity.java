@@ -16,7 +16,11 @@ public class CategorySecurity {
             return false;
         }
 
-        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return categoryRepository.findByIdAndDeletedAtIsNull(categoryId)
                 .map(category ->

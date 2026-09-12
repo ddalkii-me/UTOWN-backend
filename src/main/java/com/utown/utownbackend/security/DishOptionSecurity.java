@@ -20,7 +20,11 @@ public class DishOptionSecurity {
             return false;
         }
 
-        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return dishOptionRepository.findByIdAndDeletedAtIsNull(dishOptionId)
                 .map(option ->
@@ -42,7 +46,11 @@ public class DishOptionSecurity {
             return false;
         }
 
-        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return dishOptionGroupRepository.findByIdAndDeletedAtIsNull(optionGroupId)
                 .map(group ->

@@ -467,8 +467,8 @@ class OrderServiceImplTest {
         OrderResponseDto response = orderService.completeOrder(500L);
 
         assertNotNull(response);
-        assertEquals(OrderStatus.DELIVERED, response.status());
-        assertNotNull(response.deliveredAt());
+        assertEquals(OrderStatus.READY_FOR_PICKUP, response.status());
+        assertNull(response.deliveredAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
     }

@@ -16,8 +16,11 @@ public class DishSecurity {
             return false;
         }
 
-        Long userId =
-                ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return dishRepository.findByIdAndDeletedAtIsNull(dishId)
                 .map(dish ->
@@ -36,8 +39,11 @@ public class DishSecurity {
             return false;
         }
 
-        Long userId =
-                ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return dishRepository.findByIdAndDeletedAtIsNotNull(dishId)
                 .map(dish ->

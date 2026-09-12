@@ -16,8 +16,11 @@ public class OrderSecurity {
             return false;
         }
 
-        Long userId =
-                ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return orderRepository.findById(orderId)
                 .map(order -> order.getUser().getId().equals(userId))
@@ -29,8 +32,11 @@ public class OrderSecurity {
             return false;
         }
 
-        Long userId =
-                ((CustomUserDetails) authentication.getPrincipal()).getId();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
+
+        Long userId = principal.getId();
 
         return orderRepository.findById(orderId)
                 .map(order ->

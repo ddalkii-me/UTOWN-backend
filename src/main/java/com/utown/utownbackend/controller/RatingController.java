@@ -33,7 +33,7 @@ public class RatingController {
     }
 
     @GetMapping("/restaurants/{restaurantId}/ratings")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER')")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<RatingResponseDto>> getRatingsByRestaurant(
             @PathVariable Long restaurantId
     ) {

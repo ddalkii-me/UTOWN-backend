@@ -2,6 +2,7 @@ package com.utown.utownbackend.controller;
 
 import com.utown.utownbackend.dto.AddressRequestDto;
 import com.utown.utownbackend.dto.AddressResponseDto;
+import com.utown.utownbackend.dto.AddressUpdateRequestDto;
 import com.utown.utownbackend.service.AddressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +63,7 @@ public class AddressController {
     @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<AddressResponseDto> updateAddress(
             @PathVariable Long id,
-            @Valid @RequestBody AddressRequestDto request) {
+            @Valid @RequestBody AddressUpdateRequestDto request) {
 
         return ResponseEntity.ok(
                 addressService.updateAddress(id, request)

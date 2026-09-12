@@ -231,7 +231,7 @@ public class OrderServiceImpl implements OrderService {
                 );
 
             } else if (principal.getRole() == UserRole.RESTAURANT_OWNER) {
-                // Restaurant owners can only see orders from their restaurant.
+                // Restaurant owners can only see orders from restaurants they own.
                 predicates.add(
                         cb.equal(
                                 root.get("restaurant").get("owner").get("id"),
@@ -239,6 +239,15 @@ public class OrderServiceImpl implements OrderService {
                         )
                 );
 
+                // If a restaurantId is provided, filter to that specific restaurant.
+                if (restaurantId != null) {
+                    predicates.add(
+                            cb.equal(
+                                    root.get("restaurant").get("id"),
+                                    restaurantId
+                            )
+                    );
+                }
             } else if (principal.getRole() == UserRole.ADMIN) {
                 // Admin can filter orders freely.
                 if (restaurantId != null) {
@@ -331,13 +340,13 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalStateException("Order cannot be completed from status: " + order.getStatus());
         }
         // Restaurant owner's "Completed" action
-        // makes the order DELIVERED for the customer.
-        order.setStatus(OrderStatus.DELIVERED);
-        order.setDeliveredAt(LocalDateTime.now());
+        // means the food preparation is finished
+        // and the order is ready for pickup.
+        order.setStatus(OrderStatus.READY_FOR_PICKUP);
 
         Order savedOrder = orderRepository.save(order);
         User actor = resolveActor(savedOrder);
-        recordStatusHistory(savedOrder, OrderStatus.COMPLETED, actor, null);
+        recordStatusHistory(savedOrder, OrderStatus.READY_FOR_PICKUP, actor, null);
 
         return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
     }

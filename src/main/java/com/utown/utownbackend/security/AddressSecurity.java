@@ -18,8 +18,9 @@ public class AddressSecurity {
             return false;
         }
 
-        CustomUserDetails principal =
-                (CustomUserDetails) authentication.getPrincipal();
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+            return false;
+        }
 
         // Only customers can use the "own address" permission
         if (principal.getRole() != UserRole.CUSTOMER) {
