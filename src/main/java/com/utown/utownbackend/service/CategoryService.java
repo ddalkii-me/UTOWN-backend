@@ -11,6 +11,8 @@ public interface CategoryService {
 
     List<CategoryResponseDto> getAllCategories();
 
+    List<CategoryResponseDto> getAllCategories(Long restaurantId);
+
     CategoryResponseDto getCategoryById(Long id);
 
     CategoryResponseDto updateCategory(Long id, CategoryRequestDto request);

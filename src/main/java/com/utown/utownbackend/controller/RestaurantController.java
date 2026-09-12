@@ -1,13 +1,16 @@
 package com.utown.utownbackend.controller;
 
+import com.utown.utownbackend.dto.RestaurantMenuResponseDto;
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.RestaurantResponseDto;
 import com.utown.utownbackend.dto.WorkingHoursDto;
+import com.utown.utownbackend.service.MenuService;
 import com.utown.utownbackend.service.RestaurantService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.DayOfWeek;
@@ -19,6 +22,7 @@ import java.util.List;
 public class RestaurantController {
 
     private final RestaurantService restaurantService;
+    private final MenuService menuService;
 
     @PostMapping
     public ResponseEntity<RestaurantResponseDto> createRestaurant(
@@ -47,6 +51,17 @@ public class RestaurantController {
 
         RestaurantResponseDto response =
                 restaurantService.getRestaurantById(id);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/menu")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<RestaurantMenuResponseDto> getRestaurantMenu(
+            @PathVariable Long id) {
+
+        RestaurantMenuResponseDto response =
+                menuService.getRestaurantMenu(id);
 
         return ResponseEntity.ok(response);
     }

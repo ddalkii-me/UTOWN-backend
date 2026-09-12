@@ -94,6 +94,19 @@ class CategoryServiceImplTest {
         assertThat(result.get(0).name()).isEqualTo("Burgers");
     }
 
+    @Test
+    @DisplayName("getAllCategories(restaurantId) - should filter by restaurant and order by priority")
+    void getAllCategories_withRestaurantId_shouldReturnRestaurantCategories() {
+        when(categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(1L))
+                .thenReturn(List.of(category));
+
+        List<CategoryResponseDto> result = categoryService.getAllCategories(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).name()).isEqualTo("Burgers");
+        verify(categoryRepository).findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(1L);
+    }
+
     // ── getCategoryById ──────────────────────────────────────────────
 
     @Test

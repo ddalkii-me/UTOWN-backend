@@ -43,6 +43,9 @@ class RestaurantControllerTest {
     @MockitoBean
     private RestaurantService restaurantService;
 
+    @MockitoBean
+    private com.utown.utownbackend.service.MenuService menuService;
+
     private RestaurantRequestDto requestDto;
     private RestaurantResponseDto responseDto;
     private WorkingHoursDto workingHoursDto;
@@ -118,6 +121,61 @@ class RestaurantControllerTest {
                 .thenThrow(new EntityNotFoundException("Restaurant not found"));
 
         mockMvc.perform(get("/api/restaurants/{id}", 99L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Resource Not Found"));
+    }
+
+    @Test
+    @DisplayName("GET /api/restaurants/{id}/menu - should return 200 with full menu hierarchy")
+    void getRestaurantMenu_shouldReturn200() throws Exception {
+        var menuDto = new com.utown.utownbackend.dto.RestaurantMenuResponseDto(
+                1L,
+                "KFC",
+                RestaurantStatus.OPEN,
+                new BigDecimal("15000"),
+                List.of(
+                        new com.utown.utownbackend.dto.MenuCategoryDto(
+                                10L,
+                                "Chicken",
+                                "Crispy",
+                                "url",
+                                1,
+                                List.of(
+                                        new com.utown.utownbackend.dto.MenuDishDto(
+                                                100L,
+                                                "Hot Wings",
+                                                "Spicy wings",
+                                                new BigDecimal("8000"),
+                                                "url",
+                                                com.utown.utownbackend.entity.DishStatus.AVAILABLE,
+                                                1,
+                                                List.of()
+                                        )
+                                )
+                        )
+                )
+        );
+
+        when(menuService.getRestaurantMenu(1L)).thenReturn(menuDto);
+
+        mockMvc.perform(get("/api/restaurants/{id}/menu", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.restaurantId").value(1L))
+                .andExpect(jsonPath("$.restaurantName").value("KFC"))
+                .andExpect(jsonPath("$.restaurantStatus").value("OPEN"))
+                .andExpect(jsonPath("$.categories[0].id").value(10L))
+                .andExpect(jsonPath("$.categories[0].name").value("Chicken"))
+                .andExpect(jsonPath("$.categories[0].dishes[0].id").value(100L))
+                .andExpect(jsonPath("$.categories[0].dishes[0].name").value("Hot Wings"));
+    }
+
+    @Test
+    @DisplayName("GET /api/restaurants/{id}/menu - should return 404 when restaurant not found")
+    void getRestaurantMenu_shouldReturn404WhenNotFound() throws Exception {
+        when(menuService.getRestaurantMenu(99L))
+                .thenThrow(new EntityNotFoundException("Restaurant not found"));
+
+        mockMvc.perform(get("/api/restaurants/{id}/menu", 99L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Resource Not Found"));
     }

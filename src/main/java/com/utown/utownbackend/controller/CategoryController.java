@@ -27,10 +27,12 @@ public class CategoryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     @GetMapping
-    public ResponseEntity<List<CategoryResponseDto>> getAllCategories() {
+    @org.springframework.security.access.prepost.PreAuthorize("permitAll()")
+    public ResponseEntity<List<CategoryResponseDto>> getAllCategories(
+            @RequestParam(required = false) Long restaurantId) {
 
         List<CategoryResponseDto> categories =
-                categoryService.getAllCategories();
+                categoryService.getAllCategories(restaurantId);
 
         return ResponseEntity.ok(categories);
     }

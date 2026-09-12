@@ -15,6 +15,16 @@ public interface DishRepository extends JpaRepository<Dish, Long> {
 
     List<Dish> findAllByDeletedAtIsNull();
 
+    List<Dish> findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(Long restaurantId);
+
+    List<Dish> findAllByRestaurantIdAndCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(Long restaurantId, Long categoryId);
+
+    List<Dish> findAllByRestaurantIdAndStatusAndDeletedAtIsNullOrderBySortOrderAsc(Long restaurantId, DishStatus status);
+
+    List<Dish> findAllByRestaurantIdAndCategoryIdAndStatusAndDeletedAtIsNullOrderBySortOrderAsc(Long restaurantId, Long categoryId, DishStatus status);
+
+    List<Dish> findAllByCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(Long categoryId);
+
     Optional<Dish> findByIdAndDeletedAtIsNull(Long id);
 
     List<Dish> findAllByStatusAndDeletedAtIsNull(DishStatus status);

@@ -16,6 +16,9 @@ public interface DishOptionGroupRepository extends JpaRepository<DishOptionGroup
     @Query("SELECT g FROM DishOptionGroup g WHERE g.dish.id = :dishId AND g.deletedAt IS NULL AND g.dish.deletedAt IS NULL ORDER BY g.sortOrder ASC")
     List<DishOptionGroup> findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(@Param("dishId") Long dishId);
 
+    @Query("SELECT g FROM DishOptionGroup g WHERE g.dish.id IN :dishIds AND g.deletedAt IS NULL AND g.dish.deletedAt IS NULL ORDER BY g.sortOrder ASC")
+    List<DishOptionGroup> findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(@Param("dishIds") List<Long> dishIds);
+
     boolean existsByDishIdAndDeletedAtIsNull(Long dishId);
 
     Optional<DishOptionGroup> findByIdAndDeletedAtIsNull(Long id);

@@ -10,5 +10,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     List<Category> findAllByDeletedAtIsNull();
 
+    List<Category> findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(Long restaurantId);
+
     Optional<Category> findByIdAndDeletedAtIsNull(Long id);
 }

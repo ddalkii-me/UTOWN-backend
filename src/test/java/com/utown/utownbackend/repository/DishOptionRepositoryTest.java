@@ -185,4 +185,31 @@ class DishOptionRepositoryTest {
         assertThat(foundActive.get().getName()).isEqualTo("Active Option");
         assertThat(foundDeleted).isEmpty();
     }
+
+    @Test
+    @DisplayName("findAllByOptionGroupIdInAndDeletedAtIsNullOrderBySortOrderAsc - returns options for multiple groups ordered by sortOrder")
+    void findAllByOptionGroupIdInAndDeletedAtIsNullOrderBySortOrderAsc_success() {
+        DishOptionGroup group2 = new DishOptionGroup();
+        group2.setName("Sauce");
+        group2.setDish(activeDish);
+        group2.setRequired(false);
+        group2.setMinSelections(0);
+        group2.setMaxSelections(2);
+        group2.setSortOrder(2);
+        entityManager.persist(group2);
+
+        DishOption opt1 = createOption("Regular Size", activeGroup, 1, null);
+        DishOption opt2 = createOption("Large Size", activeGroup, 3, null);
+        DishOption opt3 = createOption("Soy Sauce", group2, 2, null);
+        createOption("Deleted Sauce", group2, 0, LocalDateTime.now());
+        entityManager.flush();
+
+        List<DishOption> results = dishOptionRepository
+                .findAllByOptionGroupIdInAndDeletedAtIsNullOrderBySortOrderAsc(List.of(activeGroup.getId(), group2.getId()));
+
+        assertThat(results).hasSize(3);
+        assertThat(results.get(0).getName()).isEqualTo("Regular Size");
+        assertThat(results.get(1).getName()).isEqualTo("Soy Sauce");
+        assertThat(results.get(2).getName()).isEqualTo("Large Size");
+    }
 }
