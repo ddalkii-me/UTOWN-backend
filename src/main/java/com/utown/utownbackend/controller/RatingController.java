@@ -6,6 +6,7 @@ import com.utown.utownbackend.service.RatingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class RatingController {
     private final RatingService ratingService;
 
     @PostMapping("/orders/{orderId}/ratings")
+    @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isCustomer(authentication, #orderId)")
     public ResponseEntity<RatingResponseDto> createRating(
             @PathVariable Long orderId,
             @Valid @RequestBody RatingRequestDto request
@@ -31,6 +33,7 @@ public class RatingController {
     }
 
     @GetMapping("/restaurants/{restaurantId}/ratings")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER')")
     public ResponseEntity<List<RatingResponseDto>> getRatingsByRestaurant(
             @PathVariable Long restaurantId
     ) {
@@ -40,6 +43,7 @@ public class RatingController {
     }
 
     @GetMapping("/ratings/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER')")
     public ResponseEntity<RatingResponseDto> getRatingById(
             @PathVariable Long id
     ) {
@@ -49,6 +53,7 @@ public class RatingController {
     }
 
     @DeleteMapping("/ratings/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRating(
             @PathVariable Long id
     ) {

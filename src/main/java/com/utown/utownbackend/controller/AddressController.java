@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class AddressController {
     private final AddressService addressService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #request.userId() == authentication.principal.id)")
     public ResponseEntity<AddressResponseDto> createAddress(
             @Valid @RequestBody AddressRequestDto request) {
 
@@ -28,6 +30,7 @@ public class AddressController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<AddressResponseDto>> getAllAddresses() {
 
         return ResponseEntity.ok(
@@ -36,6 +39,7 @@ public class AddressController {
     }
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<List<AddressResponseDto>> getAddressesByUser(
             @PathVariable Long userId) {
 
@@ -45,6 +49,7 @@ public class AddressController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<AddressResponseDto> getAddressById(
             @PathVariable Long id) {
 
@@ -54,6 +59,7 @@ public class AddressController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<AddressResponseDto> updateAddress(
             @PathVariable Long id,
             @Valid @RequestBody AddressRequestDto request) {
@@ -64,6 +70,7 @@ public class AddressController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteAddress(
             @PathVariable Long id) {
 

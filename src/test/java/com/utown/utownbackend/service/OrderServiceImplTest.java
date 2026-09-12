@@ -3,6 +3,7 @@ package com.utown.utownbackend.service;
 import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
+import com.utown.utownbackend.security.CustomUserDetails;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -354,7 +356,14 @@ class OrderServiceImplTest {
         when(orderItemRepository.findAllByOrderIdIn(List.of(500L))).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
 
-        List<OrderResponseDto> responses = orderService.getAllOrders();
+        CustomUserDetails admin = mock(CustomUserDetails.class);
+
+
+        Authentication authentication = mock(Authentication.class);
+
+
+        List<OrderResponseDto> responses =
+                orderService.getOrders(null, null, null, authentication);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
@@ -371,7 +380,8 @@ class OrderServiceImplTest {
         when(orderItemRepository.findAllByOrderIdIn(List.of(500L))).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
 
-        List<OrderResponseDto> responses = orderService.getOrders(10L, 1L, List.of(OrderStatus.PENDING));
+        List<OrderResponseDto> responses =
+                orderService.getOrders(10L, 1L, List.of(OrderStatus.PENDING), null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
@@ -457,7 +467,7 @@ class OrderServiceImplTest {
         OrderResponseDto response = orderService.completeOrder(500L);
 
         assertNotNull(response);
-        assertEquals(OrderStatus.COMPLETED, response.status());
+        assertEquals(OrderStatus.DELIVERED, response.status());
         assertNotNull(response.deliveredAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
