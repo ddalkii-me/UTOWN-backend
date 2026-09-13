@@ -3,6 +3,7 @@ ALTER TABLE orders
     'ACCEPTED',
     'COMPLETED',
     'DECLINED',
+    'DELIVERED',
     'IN_PREPARATION',
     'PENDING',
     'READY_FOR_PICKUP'
@@ -13,6 +14,7 @@ ALTER TABLE order_status_history
     'ACCEPTED',
     'COMPLETED',
     'DECLINED',
+    'DELIVERED',
     'IN_PREPARATION',
     'PENDING',
     'READY_FOR_PICKUP'

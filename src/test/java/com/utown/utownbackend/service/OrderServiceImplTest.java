@@ -380,8 +380,15 @@ class OrderServiceImplTest {
         when(orderItemRepository.findAllByOrderIdIn(List.of(500L))).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
 
+        Authentication authentication = mock(Authentication.class);
+
         List<OrderResponseDto> responses =
-                orderService.getOrders(10L, 1L, List.of(OrderStatus.PENDING), null);
+                orderService.getOrders(
+                        10L,
+                        1L,
+                        List.of(OrderStatus.PENDING),
+                        authentication
+                );
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
