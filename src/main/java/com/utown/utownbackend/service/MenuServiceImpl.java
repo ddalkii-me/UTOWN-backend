@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +30,15 @@ public class MenuServiceImpl implements MenuService {
         List<Category> categories = categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(restaurantId);
         List<Dish> dishes = dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(restaurantId);
 
-        if (dishes.isEmpty()) {
+        Set<Long> validCategoryIds = categories.stream()
+                .map(Category::getId)
+                .collect(Collectors.toSet());
+
+        List<Dish> validDishes = dishes.stream()
+                .filter(dish -> dish.getCategory() != null && validCategoryIds.contains(dish.getCategory().getId()))
+                .toList();
+
+        if (validDishes.isEmpty()) {
             List<MenuCategoryDto> emptyCategoryDtos = categories.stream()
                     .map(cat -> new MenuCategoryDto(
                             cat.getId(),
@@ -50,7 +59,7 @@ public class MenuServiceImpl implements MenuService {
             );
         }
 
-        List<Long> dishIds = dishes.stream().map(Dish::getId).toList();
+        List<Long> dishIds = validDishes.stream().map(Dish::getId).toList();
         List<DishOptionGroup> optionGroups = dishOptionGroupRepository
                 .findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(dishIds);
 
@@ -88,21 +97,19 @@ public class MenuServiceImpl implements MenuService {
         }
 
         Map<Long, List<MenuDishDto>> dishesByCategoryId = new HashMap<>();
-        for (Dish dish : dishes) {
-            if (dish.getCategory() != null) {
-                List<MenuOptionGroupDto> dishOptionGroups = groupsByDishId.getOrDefault(dish.getId(), Collections.emptyList());
-                dishesByCategoryId.computeIfAbsent(dish.getCategory().getId(), k -> new ArrayList<>())
-                        .add(new MenuDishDto(
-                                dish.getId(),
-                                dish.getName(),
-                                dish.getDescription(),
-                                dish.getPrice(),
-                                dish.getImageUrl(),
-                                dish.getStatus(),
-                                dish.getSortOrder(),
-                                dishOptionGroups
-                        ));
-            }
+        for (Dish dish : validDishes) {
+            List<MenuOptionGroupDto> dishOptionGroups = groupsByDishId.getOrDefault(dish.getId(), Collections.emptyList());
+            dishesByCategoryId.computeIfAbsent(dish.getCategory().getId(), k -> new ArrayList<>())
+                    .add(new MenuDishDto(
+                            dish.getId(),
+                            dish.getName(),
+                            dish.getDescription(),
+                            dish.getPrice(),
+                            dish.getImageUrl(),
+                            dish.getStatus(),
+                            dish.getSortOrder(),
+                            dishOptionGroups
+                    ));
         }
 
         List<MenuCategoryDto> categoryDtos = categories.stream()

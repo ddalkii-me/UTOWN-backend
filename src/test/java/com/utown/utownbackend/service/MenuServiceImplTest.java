@@ -227,6 +227,125 @@ class MenuServiceImplTest {
     }
 
     @Test
+    @DisplayName("getRestaurantMenu - preserves and maps both AVAILABLE and ON_HOLD dish statuses")
+    void getRestaurantMenu_availableAndOnHoldDishes() {
+        dish1.setStatus(DishStatus.AVAILABLE);
+        dish2.setStatus(DishStatus.ON_HOLD);
+
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
+        when(categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(1L)).thenReturn(List.of(cat1));
+        when(dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(1L)).thenReturn(List.of(dish1, dish2));
+        when(dishOptionGroupRepository.findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(List.of(100L, 101L)))
+                .thenReturn(Collections.emptyList());
+
+        RestaurantMenuResponseDto result = menuService.getRestaurantMenu(1L);
+
+        assertThat(result.categories()).hasSize(1);
+        var dishes = result.categories().get(0).dishes();
+        assertThat(dishes).hasSize(2);
+        assertThat(dishes.get(0).id()).isEqualTo(100L);
+        assertThat(dishes.get(0).status()).isEqualTo(DishStatus.AVAILABLE);
+        assertThat(dishes.get(1).id()).isEqualTo(101L);
+        assertThat(dishes.get(1).status()).isEqualTo(DishStatus.ON_HOLD);
+    }
+
+    @Test
+    @DisplayName("getRestaurantMenu - excludes dishes with null, deleted, or cross-restaurant categories")
+    void getRestaurantMenu_excludesDishesWithDeletedOrCrossRestaurantCategories() {
+        // Active category belonging to restaurant 1
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
+        when(categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(1L)).thenReturn(List.of(cat1));
+
+        // Valid dish in cat1
+        Dish validDish = dish1; // in cat1
+
+        // Dish with null category
+        Dish nullCatDish = new Dish();
+        nullCatDish.setId(201L);
+        nullCatDish.setName("Orphan Dish");
+        nullCatDish.setRestaurant(restaurant);
+        nullCatDish.setCategory(null);
+        nullCatDish.setPrice(new BigDecimal("5000"));
+        nullCatDish.setStatus(DishStatus.AVAILABLE);
+        nullCatDish.setSortOrder(2);
+
+        // Dish with soft-deleted category (not in categoryRepository active list)
+        Category deletedCat = new Category();
+        deletedCat.setId(888L);
+        deletedCat.setName("Deleted Category");
+        deletedCat.setRestaurant(restaurant);
+
+        Dish deletedCatDish = new Dish();
+        deletedCatDish.setId(202L);
+        deletedCatDish.setName("Deleted Cat Dish");
+        deletedCatDish.setRestaurant(restaurant);
+        deletedCatDish.setCategory(deletedCat);
+        deletedCatDish.setPrice(new BigDecimal("7000"));
+        deletedCatDish.setStatus(DishStatus.AVAILABLE);
+        deletedCatDish.setSortOrder(3);
+
+        // Dish with cross-restaurant category (category belonging to another restaurant)
+        Restaurant otherRestaurant = new Restaurant();
+        otherRestaurant.setId(2L);
+        otherRestaurant.setName("Other Restaurant");
+
+        Category otherCat = new Category();
+        otherCat.setId(999L);
+        otherCat.setName("Other Restaurant Cat");
+        otherCat.setRestaurant(otherRestaurant);
+
+        Dish crossCatDish = new Dish();
+        crossCatDish.setId(203L);
+        crossCatDish.setName("Cross Restaurant Dish");
+        crossCatDish.setRestaurant(restaurant);
+        crossCatDish.setCategory(otherCat);
+        crossCatDish.setPrice(new BigDecimal("8000"));
+        crossCatDish.setStatus(DishStatus.AVAILABLE);
+        crossCatDish.setSortOrder(4);
+
+        when(dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(1L))
+                .thenReturn(List.of(validDish, nullCatDish, deletedCatDish, crossCatDish));
+        when(dishOptionGroupRepository.findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(List.of(100L)))
+                .thenReturn(Collections.emptyList());
+
+        RestaurantMenuResponseDto result = menuService.getRestaurantMenu(1L);
+
+        assertThat(result.categories()).hasSize(1);
+        var dishes = result.categories().get(0).dishes();
+        assertThat(dishes).hasSize(1);
+        assertThat(dishes.get(0).id()).isEqualTo(100L);
+        assertThat(dishes.get(0).name()).isEqualTo("Bibimbap");
+
+        // Verify option groups only queried for valid dishes belonging to restaurant's active categories
+        verify(dishOptionGroupRepository).findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(List.of(100L));
+    }
+
+    @Test
+    @DisplayName("getRestaurantMenu - when all dishes have invalid categories, returns empty categories without querying option groups")
+    void getRestaurantMenu_allDishesHaveInvalidCategories() {
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
+        when(categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(1L)).thenReturn(List.of(cat1));
+
+        Dish orphanDish = new Dish();
+        orphanDish.setId(201L);
+        orphanDish.setName("Orphan Dish");
+        orphanDish.setRestaurant(restaurant);
+        orphanDish.setCategory(null);
+        orphanDish.setPrice(new BigDecimal("5000"));
+        orphanDish.setStatus(DishStatus.AVAILABLE);
+
+        when(dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(1L)).thenReturn(List.of(orphanDish));
+
+        RestaurantMenuResponseDto result = menuService.getRestaurantMenu(1L);
+
+        assertThat(result.categories()).hasSize(1);
+        assertThat(result.categories().get(0).dishes()).isEmpty();
+
+        verify(dishOptionGroupRepository, never()).findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(anyList());
+        verify(dishOptionRepository, never()).findAllByOptionGroupIdInAndDeletedAtIsNullOrderBySortOrderAsc(anyList());
+    }
+
+    @Test
     @DisplayName("getRestaurantMenu - throws EntityNotFoundException when restaurant does not exist or is soft-deleted")
     void getRestaurantMenu_restaurantNotFound() {
         when(restaurantRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(Optional.empty());
