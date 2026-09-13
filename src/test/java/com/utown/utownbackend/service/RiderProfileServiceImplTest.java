@@ -158,6 +158,40 @@ class RiderProfileServiceImplTest {
 
             verify(riderProfileRepository, never()).save(any());
         }
+
+        @Test
+        @DisplayName("createRiderProfile - should throw IllegalArgumentException when creating SUSPENDED or INACTIVE rider with availability true")
+        void createRiderProfile_suspendedWithAvailabilityTrue_shouldThrow() {
+            RiderProfileRequestDto request = new RiderProfileRequestDto(
+                    1L, TransportType.BICYCLE, true, RiderStatus.SUSPENDED
+            );
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(riderProfileRepository.existsByUserId(1L)).thenReturn(false);
+
+            assertThatThrownBy(() -> riderProfileService.createRiderProfile(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Cannot create available rider with status: SUSPENDED");
+
+            verify(riderProfileRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("createRiderProfile - should default availability to false when status is SUSPENDED or INACTIVE and availability is null")
+        void createRiderProfile_suspendedWithoutAvailability_shouldDefaultFalse() {
+            RiderProfileRequestDto request = new RiderProfileRequestDto(
+                    1L, TransportType.BICYCLE, null, RiderStatus.SUSPENDED
+            );
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(riderProfileRepository.existsByUserId(1L)).thenReturn(false);
+            when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(i -> i.getArgument(0));
+
+            RiderProfileResponseDto response = riderProfileService.createRiderProfile(request);
+
+            assertThat(response.status()).isEqualTo(RiderStatus.SUSPENDED);
+            assertThat(response.availability()).isFalse();
+        }
     }
 
     @Nested
@@ -260,11 +294,9 @@ class RiderProfileServiceImplTest {
     class UpdateRiderProfileTests {
 
         @Test
-        @DisplayName("updateRiderProfile - should update provided fields")
-        void updateRiderProfile_shouldUpdateFields() {
-            RiderProfileUpdateRequestDto request = new RiderProfileUpdateRequestDto(
-                    TransportType.CAR, false, RiderStatus.INACTIVE
-            );
+        @DisplayName("updateRiderProfile - should update transportType")
+        void updateRiderProfile_shouldUpdateTransportType() {
+            RiderProfileUpdateRequestDto request = new RiderProfileUpdateRequestDto(TransportType.CAR);
 
             when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
             when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(i -> i.getArgument(0));
@@ -272,16 +304,12 @@ class RiderProfileServiceImplTest {
             RiderProfileResponseDto response = riderProfileService.updateRiderProfile(10L, request);
 
             assertThat(response.transportType()).isEqualTo(TransportType.CAR);
-            assertThat(response.availability()).isFalse();
-            assertThat(response.status()).isEqualTo(RiderStatus.INACTIVE);
         }
 
         @Test
         @DisplayName("updateRiderProfile - should throw EntityNotFoundException when not found")
         void updateRiderProfile_notFound_shouldThrow() {
-            RiderProfileUpdateRequestDto request = new RiderProfileUpdateRequestDto(
-                    TransportType.CAR, false, RiderStatus.INACTIVE
-            );
+            RiderProfileUpdateRequestDto request = new RiderProfileUpdateRequestDto(TransportType.CAR);
 
             when(riderProfileRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -290,8 +318,9 @@ class RiderProfileServiceImplTest {
         }
 
         @Test
-        @DisplayName("updateAvailability - should update availability")
+        @DisplayName("updateAvailability - should update availability when active")
         void updateAvailability_shouldSucceed() {
+            riderProfile.setStatus(RiderStatus.ACTIVE);
             RiderAvailabilityUpdateRequestDto request = new RiderAvailabilityUpdateRequestDto(false);
 
             when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
@@ -300,6 +329,36 @@ class RiderProfileServiceImplTest {
             RiderProfileResponseDto response = riderProfileService.updateAvailability(10L, request);
 
             assertThat(response.availability()).isFalse();
+        }
+
+        @Test
+        @DisplayName("updateAvailability - should throw IllegalStateException when rider is SUSPENDED")
+        void updateAvailability_suspended_shouldThrow() {
+            riderProfile.setStatus(RiderStatus.SUSPENDED);
+            RiderAvailabilityUpdateRequestDto request = new RiderAvailabilityUpdateRequestDto(true);
+
+            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+
+            assertThatThrownBy(() -> riderProfileService.updateAvailability(10L, request))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot set availability to true for rider with status: SUSPENDED");
+
+            verify(riderProfileRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("updateAvailability - should throw IllegalStateException when rider is INACTIVE")
+        void updateAvailability_inactive_shouldThrow() {
+            riderProfile.setStatus(RiderStatus.INACTIVE);
+            RiderAvailabilityUpdateRequestDto request = new RiderAvailabilityUpdateRequestDto(true);
+
+            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+
+            assertThatThrownBy(() -> riderProfileService.updateAvailability(10L, request))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot set availability to true for rider with status: INACTIVE");
+
+            verify(riderProfileRepository, never()).save(any());
         }
 
         @Test
@@ -338,13 +397,23 @@ class RiderProfileServiceImplTest {
     class DeleteRiderProfileTests {
 
         @Test
-        @DisplayName("deleteRiderProfile - should delete when profile exists")
-        void deleteRiderProfile_shouldSucceed() {
+        @DisplayName("deleteRiderProfile - should soft-deactivate profile and revert user role to CUSTOMER")
+        void deleteRiderProfile_shouldSoftDeactivate() {
+            user.setRole(UserRole.RIDER);
+            riderProfile.setUser(user);
+            riderProfile.setStatus(RiderStatus.ACTIVE);
+            riderProfile.setAvailability(true);
+
             when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
 
             riderProfileService.deleteRiderProfile(10L);
 
-            verify(riderProfileRepository).delete(riderProfile);
+            assertThat(riderProfile.getStatus()).isEqualTo(RiderStatus.INACTIVE);
+            assertThat(riderProfile.getAvailability()).isFalse();
+            assertThat(user.getRole()).isEqualTo(UserRole.CUSTOMER);
+            verify(riderProfileRepository).save(riderProfile);
+            verify(userRepository).save(user);
+            verify(riderProfileRepository, never()).delete(any());
         }
 
         @Test
@@ -356,6 +425,7 @@ class RiderProfileServiceImplTest {
                     .isInstanceOf(EntityNotFoundException.class);
 
             verify(riderProfileRepository, never()).delete(any());
+            verify(riderProfileRepository, never()).save(any());
         }
     }
 }

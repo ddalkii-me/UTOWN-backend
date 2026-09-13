@@ -43,11 +43,21 @@ public class RiderProfileServiceImpl implements RiderProfileService {
             log.info("Updated role to RIDER for user ID: {}", user.getId());
         }
 
+        RiderStatus status = request.status() != null ? request.status() : RiderStatus.ACTIVE;
+        boolean availability = request.availability() != null ? request.availability() : true;
+
+        if ((status == RiderStatus.SUSPENDED || status == RiderStatus.INACTIVE) && Boolean.TRUE.equals(request.availability())) {
+            throw new IllegalArgumentException("Cannot create available rider with status: " + status);
+        }
+        if (status == RiderStatus.SUSPENDED || status == RiderStatus.INACTIVE) {
+            availability = false;
+        }
+
         RiderProfile riderProfile = new RiderProfile();
         riderProfile.setUser(user);
         riderProfile.setTransportType(request.transportType());
-        riderProfile.setAvailability(request.availability() != null ? request.availability() : true);
-        riderProfile.setStatus(request.status() != null ? request.status() : RiderStatus.ACTIVE);
+        riderProfile.setAvailability(availability);
+        riderProfile.setStatus(status);
 
         RiderProfile saved = riderProfileRepository.save(riderProfile);
         log.info("Created rider profile with ID: {} for user ID: {}", saved.getId(), user.getId());
@@ -100,17 +110,6 @@ public class RiderProfileServiceImpl implements RiderProfileService {
             rider.setTransportType(request.transportType());
         }
 
-        if (request.availability() != null) {
-            rider.setAvailability(request.availability());
-        }
-
-        if (request.status() != null) {
-            rider.setStatus(request.status());
-            if (request.status() == RiderStatus.SUSPENDED || request.status() == RiderStatus.INACTIVE) {
-                rider.setAvailability(false);
-            }
-        }
-
         RiderProfile saved = riderProfileRepository.save(rider);
         log.info("Updated rider profile with ID: {}", saved.getId());
         return mapToResponseDto(saved);
@@ -120,6 +119,10 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     public RiderProfileResponseDto updateAvailability(Long id, RiderAvailabilityUpdateRequestDto request) {
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
+
+        if (Boolean.TRUE.equals(request.availability()) && (rider.getStatus() == RiderStatus.SUSPENDED || rider.getStatus() == RiderStatus.INACTIVE)) {
+            throw new IllegalStateException("Cannot set availability to true for rider with status: " + rider.getStatus());
+        }
 
         rider.setAvailability(request.availability());
         RiderProfile saved = riderProfileRepository.save(rider);
@@ -147,8 +150,15 @@ public class RiderProfileServiceImpl implements RiderProfileService {
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
-        riderProfileRepository.delete(rider);
-        log.info("Deleted rider profile with ID: {}", id);
+        rider.setStatus(RiderStatus.INACTIVE);
+        rider.setAvailability(false);
+        User user = rider.getUser();
+        if (user != null && user.getRole() == UserRole.RIDER) {
+            user.setRole(UserRole.CUSTOMER);
+            userRepository.save(user);
+        }
+        riderProfileRepository.save(rider);
+        log.info("Deactivated rider profile with ID: {}", id);
     }
 
     private RiderProfileResponseDto mapToResponseDto(RiderProfile rider) {
