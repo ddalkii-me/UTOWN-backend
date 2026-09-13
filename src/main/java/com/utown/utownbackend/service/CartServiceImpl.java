@@ -167,8 +167,8 @@ public class CartServiceImpl implements CartService {
         CartItem item = cartItemRepository.findByIdAndCartId(cartItemId, cart.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Cart item not found with id: " + cartItemId));
 
-        if (request.quantity() <= 0) {
-            return removeCartItem(userId, cartItemId);
+        if (request.quantity() == null || request.quantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be at least 1");
         }
 
         List<CartItemOption> itemOptions = cartItemOptionRepository.findAllByCartItemId(item.getId());
