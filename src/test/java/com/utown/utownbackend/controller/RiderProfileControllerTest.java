@@ -149,9 +149,7 @@ class RiderProfileControllerTest {
     @Test
     @DisplayName("PUT /api/riders/{id} - should return 200 OK")
     void updateRiderProfile_shouldReturn200() throws Exception {
-        RiderProfileUpdateRequestDto updateDto = new RiderProfileUpdateRequestDto(
-                TransportType.CAR, false, RiderStatus.INACTIVE
-        );
+        RiderProfileUpdateRequestDto updateDto = new RiderProfileUpdateRequestDto(TransportType.CAR);
 
         when(riderProfileService.updateRiderProfile(eq(10L), any(RiderProfileUpdateRequestDto.class)))
                 .thenReturn(responseDto);
