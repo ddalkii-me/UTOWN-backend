@@ -34,7 +34,7 @@ class DishRepositoryTest {
     void setUp() {
         User owner = new User();
         owner.setEmail("owner@test.com");
-        owner.setUsername("owner2");
+        owner.setPhone("01044444444");
         owner.setName("Owner Two");
         owner.setPassword("secret");
         owner.setRole(UserRole.RESTAURANT_OWNER);

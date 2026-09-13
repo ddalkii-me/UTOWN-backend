@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 
 @Entity
 @Table(name = "ratings")
@@ -25,10 +27,6 @@ public class Rating extends BaseEntity {
     private Restaurant restaurant;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dish_id", nullable = false)
-    private Dish dish;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
@@ -37,5 +35,8 @@ public class Rating extends BaseEntity {
 
     @Column
     private String comment;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
 }

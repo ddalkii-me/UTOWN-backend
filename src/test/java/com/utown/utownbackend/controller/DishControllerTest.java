@@ -165,7 +165,7 @@ class DishControllerTest {
 
     @Test
     @DisplayName("DELETE /api/dishes/{id} - should return 400 when active option groups exist")
-    void deleteDishById_shouldReturn500WhenOptionGroupsExist() throws Exception {
+    void deleteDishById_shouldReturn400WhenOptionGroupsExist() throws Exception {
         doThrow(new IllegalStateException("Cannot delete Dish while it has active Option Groups"))
                 .when(dishService).deleteDish(1L);
 

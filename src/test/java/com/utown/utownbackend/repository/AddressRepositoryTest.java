@@ -37,7 +37,7 @@ class AddressRepositoryTest {
     void setUp() {
         user1 = new User();
         user1.setEmail("user1@test.com");
-        user1.setUsername("user1");
+        user1.setPhone("01011111111");
         user1.setName("User One");
         user1.setPassword("pwd1");
         user1.setRole(UserRole.CUSTOMER);
@@ -46,7 +46,7 @@ class AddressRepositoryTest {
 
         user2 = new User();
         user2.setEmail("user2@test.com");
-        user2.setUsername("user2");
+        user2.setPhone("01022222222");
         user2.setName("User Two");
         user2.setPassword("pwd2");
         user2.setRole(UserRole.CUSTOMER);

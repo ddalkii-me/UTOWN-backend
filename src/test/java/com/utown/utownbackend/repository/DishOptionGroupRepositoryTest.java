@@ -34,7 +34,7 @@ class DishOptionGroupRepositoryTest {
     void setUp() {
         User owner = new User();
         owner.setEmail("owner@example.com");
-        owner.setUsername("owner1");
+        owner.setPhone("01066666666");
         owner.setName("Owner One");
         owner.setPassword("secret");
         owner.setRole(UserRole.RESTAURANT_OWNER);

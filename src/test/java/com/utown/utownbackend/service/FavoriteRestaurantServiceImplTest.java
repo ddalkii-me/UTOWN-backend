@@ -46,7 +46,7 @@ class FavoriteRestaurantServiceImplTest {
 
         user = new User();
         user.setId(1L);
-        user.setUsername("testuser");
+        user.setPhone("01012345678");
 
         restaurant = new Restaurant();
         restaurant.setId(2L);

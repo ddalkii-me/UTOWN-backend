@@ -36,7 +36,7 @@ class RestaurantRepositoryTest {
     void setUp() {
         owner = new User();
         owner.setEmail("owner_repo@test.com");
-        owner.setUsername("owner_repo");
+        owner.setPhone("01088888888");
         owner.setName("Owner Repo");
         owner.setPassword("secret");
         owner.setRole(UserRole.RESTAURANT_OWNER);
