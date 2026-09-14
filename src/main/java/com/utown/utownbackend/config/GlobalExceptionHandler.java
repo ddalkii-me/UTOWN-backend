@@ -92,8 +92,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ProblemDetail> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
 
+        String detail = (ex instanceof com.utown.utownbackend.exception.InvalidTokenException && ex.getMessage() != null)
+                ? ex.getMessage()
+                : "Invalid username or password, or unauthorized access.";
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-                HttpStatus.UNAUTHORIZED, "Invalid username or password, or unauthorized access.");
+                HttpStatus.UNAUTHORIZED, detail);
         problemDetail.setTitle("Unauthorized");
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problemDetail);
@@ -109,9 +113,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
     }
-    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
-    public ResponseEntity<ProblemDetail> handleDisabledException(org.springframework.security.authentication.DisabledException ex) {
-        log.warn("Account disabled: {}", ex.getMessage());
+
+    @ExceptionHandler(org.springframework.security.authentication.AccountStatusException.class)
+    public ResponseEntity<ProblemDetail> handleAccountStatusException(org.springframework.security.authentication.AccountStatusException ex) {
+        log.warn("Account status invalid: {}", ex.getMessage());
 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Your account is suspended or inactive.");

@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: utown-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+09:00
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-utown_db}
+      MYSQL_USER: ${DB_USERNAME:-utown_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-utown_password}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - utown-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: utown-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-utown_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      DB_USERNAME: ${DB_USERNAME:-utown_user}
+      DB_PASSWORD: ${DB_PASSWORD:-utown_password}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      SERVER_ADDRESS: 0.0.0.0
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    networks:
+      - utown-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  utown-network:
+    driver: bridge
