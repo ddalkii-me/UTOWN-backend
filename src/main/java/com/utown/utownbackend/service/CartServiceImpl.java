@@ -106,15 +106,30 @@ public class CartServiceImpl implements CartService {
         List<CartItem> existingItems = cartItemRepository.findAllByCartId(cart.getId());
         Set<Long> targetOptionIds = validatedOptions.stream().map(DishOption::getId).collect(Collectors.toSet());
 
+        List<CartItem> matchingDishItems = existingItems.stream()
+                .filter(item -> item.getDish().getId().equals(dish.getId()))
+                .toList();
+
         CartItem existingMatch = null;
-        for (CartItem item : existingItems) {
-            if (item.getDish().getId().equals(dish.getId())) {
-                List<CartItemOption> itemOptions = cartItemOptionRepository.findAllByCartItemId(item.getId());
+        List<CartItemOption> existingMatchOptions = Collections.emptyList();
+
+        if (!matchingDishItems.isEmpty()) {
+            List<Long> matchingItemIds = matchingDishItems.stream()
+                    .map(BaseEntity::getId)
+                    .toList();
+            List<CartItemOption> optionsForMatchingItems = cartItemOptionRepository.findAllByCartItemIdIn(matchingItemIds);
+            Map<Long, List<CartItemOption>> optionsByItemId = optionsForMatchingItems.stream()
+                    .filter(opt -> opt.getCartItem() != null && opt.getCartItem().getId() != null)
+                    .collect(Collectors.groupingBy(opt -> opt.getCartItem().getId()));
+
+            for (CartItem item : matchingDishItems) {
+                List<CartItemOption> itemOptions = optionsByItemId.getOrDefault(item.getId(), Collections.emptyList());
                 Set<Long> currentOptionIds = itemOptions.stream()
                         .map(opt -> opt.getDishOption().getId())
                         .collect(Collectors.toSet());
                 if (currentOptionIds.equals(targetOptionIds)) {
                     existingMatch = item;
+                    existingMatchOptions = itemOptions;
                     break;
                 }
             }
@@ -123,7 +138,10 @@ public class CartServiceImpl implements CartService {
         if (existingMatch != null) {
             int newQuantity = existingMatch.getQuantity() + request.quantity();
             existingMatch.setQuantity(newQuantity);
-            BigDecimal itemUnitTotal = existingMatch.getUnitPrice().add(optionsUnitSum);
+            BigDecimal storedOptionsUnitSum = existingMatchOptions.stream()
+                    .map(CartItemOption::getOptionPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal itemUnitTotal = existingMatch.getUnitPrice().add(storedOptionsUnitSum);
             existingMatch.setSubtotal(itemUnitTotal.multiply(BigDecimal.valueOf(newQuantity)));
             cartItemRepository.save(existingMatch);
         } else {
@@ -159,10 +177,8 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponseDto updateCartItemQuantity(Long userId, Long cartItemId, UpdateCartItemRequestDto request) {
-        User user = findActiveUser(userId);
-
-        Cart cart = cartRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Cart not found for user id: " + userId));
+        findActiveUser(userId);
+        Cart cart = findActiveCartOrThrow(userId);
 
         CartItem item = cartItemRepository.findByIdAndCartId(cartItemId, cart.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Cart item not found with id: " + cartItemId));
@@ -190,10 +206,8 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponseDto removeCartItem(Long userId, Long cartItemId) {
-        User user = findActiveUser(userId);
-
-        Cart cart = cartRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Cart not found for user id: " + userId));
+        findActiveUser(userId);
+        Cart cart = findActiveCartOrThrow(userId);
 
         CartItem item = cartItemRepository.findByIdAndCartId(cartItemId, cart.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Cart item not found with id: " + cartItemId));
@@ -220,9 +234,15 @@ public class CartServiceImpl implements CartService {
 
         Optional<Cart> cartOpt = cartRepository.findByUserId(user.getId());
         if (cartOpt.isPresent()) {
-            deleteCartContents(cartOpt.get());
-            cartRepository.delete(cartOpt.get());
-            log.info("Cart cleared for user {}", userId);
+            Cart cart = cartOpt.get();
+            boolean expired = isCartExpired(cart);
+            deleteCartContents(cart);
+            cartRepository.delete(cart);
+            if (expired) {
+                log.info("Expired cart cleared for user {}", userId);
+            } else {
+                log.info("Cart cleared for user {}", userId);
+            }
         }
     }
 
@@ -235,6 +255,19 @@ public class CartServiceImpl implements CartService {
             throw new DisabledException("User is not active");
         }
         return user;
+    }
+
+    private Cart findActiveCartOrThrow(Long userId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Cart not found for user id: " + userId));
+
+        if (isCartExpired(cart)) {
+            deleteCartContents(cart);
+            cartRepository.delete(cart);
+            throw new EntityNotFoundException("Cart has expired for user id: " + userId);
+        }
+
+        return cart;
     }
 
     private boolean isCartExpired(Cart cart) {
