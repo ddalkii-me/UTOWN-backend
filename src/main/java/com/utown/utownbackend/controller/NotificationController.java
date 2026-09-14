@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @PostMapping("/notifications")
+    @PostMapping
     public ResponseEntity<NotificationResponseDto> createNotification(
             @Valid @RequestBody NotificationRequestDto request
     ) {
@@ -27,18 +27,16 @@ public class NotificationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping({"/notifications", "/users/{userIdPathVariable}/notifications"})
+    @GetMapping
     public ResponseEntity<List<NotificationResponseDto>> getNotifications(
-            @RequestParam(required = false) Long userId,
-            @PathVariable(required = false) Long userIdPathVariable,
+            @RequestParam Long userId,
             @RequestParam(required = false) Boolean isRead
     ) {
-        Long targetUserId = resolveUserId(userId, userIdPathVariable);
-        List<NotificationResponseDto> list = notificationService.getNotificationsForUser(targetUserId, isRead);
+        List<NotificationResponseDto> list = notificationService.getNotificationsForUser(userId, isRead);
         return ResponseEntity.ok(list);
     }
 
-    @GetMapping("/notifications/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<NotificationResponseDto> getNotificationById(
             @PathVariable Long id,
             @RequestParam Long userId
@@ -47,17 +45,15 @@ public class NotificationController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping({"/notifications/unread-count", "/users/{userIdPathVariable}/notifications/unread-count"})
+    @GetMapping("/unread-count")
     public ResponseEntity<UnreadNotificationCountDto> getUnreadCount(
-            @RequestParam(required = false) Long userId,
-            @PathVariable(required = false) Long userIdPathVariable
+            @RequestParam Long userId
     ) {
-        Long targetUserId = resolveUserId(userId, userIdPathVariable);
-        UnreadNotificationCountDto response = notificationService.getUnreadCount(targetUserId);
+        UnreadNotificationCountDto response = notificationService.getUnreadCount(userId);
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/notifications/{id}/read")
+    @PatchMapping("/{id}/read")
     public ResponseEntity<NotificationResponseDto> markAsRead(
             @PathVariable Long id,
             @RequestParam Long userId
@@ -66,32 +62,20 @@ public class NotificationController {
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping({"/notifications/read-all", "/users/{userIdPathVariable}/notifications/read-all"})
+    @PatchMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead(
-            @RequestParam(required = false) Long userId,
-            @PathVariable(required = false) Long userIdPathVariable
+            @RequestParam Long userId
     ) {
-        Long targetUserId = resolveUserId(userId, userIdPathVariable);
-        notificationService.markAllAsRead(targetUserId);
+        notificationService.markAllAsRead(userId);
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/notifications/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteNotification(
             @PathVariable Long id,
             @RequestParam Long userId
     ) {
         notificationService.deleteNotification(id, userId);
         return ResponseEntity.noContent().build();
-    }
-
-    private Long resolveUserId(Long paramUserId, Long pathUserId) {
-        if (pathUserId != null) {
-            return pathUserId;
-        }
-        if (paramUserId != null) {
-            return paramUserId;
-        }
-        throw new IllegalArgumentException("userId is required");
     }
 }

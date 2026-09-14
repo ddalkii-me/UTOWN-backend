@@ -89,15 +89,66 @@ class NotificationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/users/{userId}/notifications - should return 200 OK with list")
-    void getNotifications_pathVariable_shouldReturn200() throws Exception {
+    @DisplayName("GET /api/notifications?userId=1&isRead=false - should return 200 OK with filtered list")
+    void getNotifications_withIsReadFilter_shouldReturn200() throws Exception {
         when(notificationService.getNotificationsForUser(1L, false)).thenReturn(List.of(responseDto));
 
-        mockMvc.perform(get("/api/users/{userId}/notifications", 1L).param("isRead", "false"))
+        mockMvc.perform(get("/api/notifications").param("userId", "1").param("isRead", "false"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
 
         verify(notificationService).getNotificationsForUser(1L, false);
+    }
+
+    @Test
+    @DisplayName("GET /api/notifications - missing userId should return 400 Bad Request")
+    void getNotifications_missingUserId_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/notifications"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("POST /api/notifications - missing userId should return 400 Bad Request")
+    void createNotification_missingUserId_shouldReturn400() throws Exception {
+        NotificationRequestDto invalid = new NotificationRequestDto(
+                null, NotificationType.ORDER_STATUS_CHANGED, "Title", "Message"
+        );
+
+        mockMvc.perform(post("/api/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation Failed"));
+    }
+
+    @Test
+    @DisplayName("POST /api/notifications - missing type should return 400 Bad Request")
+    void createNotification_missingType_shouldReturn400() throws Exception {
+        NotificationRequestDto invalid = new NotificationRequestDto(
+                1L, null, "Title", "Message"
+        );
+
+        mockMvc.perform(post("/api/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation Failed"));
+    }
+
+    @Test
+    @DisplayName("POST /api/notifications - blank message should return 400 Bad Request")
+    void createNotification_blankMessage_shouldReturn400() throws Exception {
+        NotificationRequestDto invalid = new NotificationRequestDto(
+                1L, NotificationType.ORDER_STATUS_CHANGED, "Title", ""
+        );
+
+        mockMvc.perform(post("/api/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation Failed"));
     }
 
     @Test
