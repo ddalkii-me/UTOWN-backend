@@ -80,13 +80,14 @@ class DeliveryAssignmentServiceImplTest {
     class CreateAssignmentTests {
 
         @Test
-        @DisplayName("createAssignment - should create assignment successfully")
+        @DisplayName("createAssignment - should create assignment successfully and lock rider availability")
         void createAssignment_shouldSucceed() {
             DeliveryAssignmentRequestDto request = new DeliveryAssignmentRequestDto(100L, 10L);
 
             when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
             when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
             when(deliveryAssignmentRepository.existsByOrderIdAndStatusIn(eq(100L), any())).thenReturn(false);
+            when(deliveryAssignmentRepository.existsByRiderIdAndStatusIn(eq(10L), any())).thenReturn(false);
             when(deliveryAssignmentRepository.save(any(DeliveryAssignment.class))).thenAnswer(i -> {
                 DeliveryAssignment da = i.getArgument(0);
                 da.setId(50L);
@@ -106,7 +107,34 @@ class DeliveryAssignmentServiceImplTest {
             assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.ASSIGNED);
             assertThat(response.assignedAt()).isNotNull();
 
+            assertThat(riderProfile.getAvailability()).isFalse();
+            verify(riderProfileRepository).save(riderProfile);
             verify(deliveryAssignmentRepository).save(any(DeliveryAssignment.class));
+        }
+
+        @Test
+        @DisplayName("createAssignment - should succeed when order status is READY_FOR_PICKUP")
+        void createAssignment_orderReadyForPickup_shouldSucceed() {
+            order.setStatus(OrderStatus.READY_FOR_PICKUP);
+            DeliveryAssignmentRequestDto request = new DeliveryAssignmentRequestDto(100L, 10L);
+
+            when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+            when(deliveryAssignmentRepository.existsByOrderIdAndStatusIn(eq(100L), any())).thenReturn(false);
+            when(deliveryAssignmentRepository.existsByRiderIdAndStatusIn(eq(10L), any())).thenReturn(false);
+            when(deliveryAssignmentRepository.save(any(DeliveryAssignment.class))).thenAnswer(i -> {
+                DeliveryAssignment da = i.getArgument(0);
+                da.setId(51L);
+                return da;
+            });
+
+            DeliveryAssignmentResponseDto response = deliveryAssignmentService.createAssignment(request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.id()).isEqualTo(51L);
+            assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.ASSIGNED);
+            assertThat(riderProfile.getAvailability()).isFalse();
+            verify(riderProfileRepository).save(riderProfile);
         }
 
         @Test
@@ -139,7 +167,7 @@ class DeliveryAssignmentServiceImplTest {
         }
 
         @Test
-        @DisplayName("createAssignment - should throw ResourceConflictException when active assignment exists")
+        @DisplayName("createAssignment - should throw ResourceConflictException when active assignment exists for order")
         void createAssignment_activeAssignmentExists_shouldThrow() {
             DeliveryAssignmentRequestDto request = new DeliveryAssignmentRequestDto(100L, 10L);
 
@@ -149,6 +177,23 @@ class DeliveryAssignmentServiceImplTest {
             assertThatThrownBy(() -> deliveryAssignmentService.createAssignment(request))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("already has an active delivery assignment");
+
+            verify(deliveryAssignmentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("createAssignment - should throw ResourceConflictException when rider already has an active assignment")
+        void createAssignment_riderHasActiveAssignment_shouldThrow() {
+            DeliveryAssignmentRequestDto request = new DeliveryAssignmentRequestDto(100L, 10L);
+
+            when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+            when(deliveryAssignmentRepository.existsByOrderIdAndStatusIn(eq(100L), any())).thenReturn(false);
+            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+            when(deliveryAssignmentRepository.existsByRiderIdAndStatusIn(eq(10L), any())).thenReturn(true);
+
+            assertThatThrownBy(() -> deliveryAssignmentService.createAssignment(request))
+                    .isInstanceOf(ResourceConflictException.class)
+                    .hasMessageContaining("Rider already has an active delivery assignment");
 
             verify(deliveryAssignmentRepository, never()).save(any());
         }
@@ -261,10 +306,11 @@ class DeliveryAssignmentServiceImplTest {
         }
 
         @Test
-        @DisplayName("completeDelivery - should transition PICKED_UP -> DELIVERED and update order status")
+        @DisplayName("completeDelivery - should transition PICKED_UP -> DELIVERED, update order status, and restore active rider availability")
         void completeDelivery_shouldSucceed() {
             deliveryAssignment.setStatus(DeliveryAssignmentStatus.PICKED_UP);
             deliveryAssignment.setPickedUpAt(LocalDateTime.now().minusMinutes(10));
+            riderProfile.setAvailability(false);
 
             when(deliveryAssignmentRepository.findById(50L)).thenReturn(Optional.of(deliveryAssignment));
             when(deliveryAssignmentRepository.save(any(DeliveryAssignment.class))).thenAnswer(i -> i.getArgument(0));
@@ -275,7 +321,28 @@ class DeliveryAssignmentServiceImplTest {
             assertThat(response.deliveredAt()).isNotNull();
             assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
             assertThat(order.getDeliveredAt()).isNotNull();
+            assertThat(riderProfile.getAvailability()).isTrue();
+
             verify(orderRepository).save(order);
+            verify(riderProfileRepository).save(riderProfile);
+        }
+
+        @Test
+        @DisplayName("completeDelivery - should not restore availability if rider is SUSPENDED")
+        void completeDelivery_suspendedRider_shouldNotRestoreAvailability() {
+            deliveryAssignment.setStatus(DeliveryAssignmentStatus.PICKED_UP);
+            deliveryAssignment.setPickedUpAt(LocalDateTime.now().minusMinutes(10));
+            riderProfile.setStatus(RiderStatus.SUSPENDED);
+            riderProfile.setAvailability(false);
+
+            when(deliveryAssignmentRepository.findById(50L)).thenReturn(Optional.of(deliveryAssignment));
+            when(deliveryAssignmentRepository.save(any(DeliveryAssignment.class))).thenAnswer(i -> i.getArgument(0));
+
+            DeliveryAssignmentResponseDto response = deliveryAssignmentService.completeDelivery(50L);
+
+            assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.DELIVERED);
+            assertThat(riderProfile.getAvailability()).isFalse();
+            verify(riderProfileRepository, never()).save(riderProfile);
         }
 
         @Test
@@ -290,14 +357,17 @@ class DeliveryAssignmentServiceImplTest {
         }
 
         @Test
-        @DisplayName("cancelAssignment - should transition ASSIGNED -> CANCELLED")
+        @DisplayName("cancelAssignment - should transition ASSIGNED -> CANCELLED and restore active rider availability")
         void cancelAssignment_shouldSucceed() {
+            riderProfile.setAvailability(false);
             when(deliveryAssignmentRepository.findById(50L)).thenReturn(Optional.of(deliveryAssignment));
             when(deliveryAssignmentRepository.save(any(DeliveryAssignment.class))).thenAnswer(i -> i.getArgument(0));
 
             DeliveryAssignmentResponseDto response = deliveryAssignmentService.cancelAssignment(50L);
 
             assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.CANCELLED);
+            assertThat(riderProfile.getAvailability()).isTrue();
+            verify(riderProfileRepository).save(riderProfile);
         }
 
         @Test
@@ -339,14 +409,39 @@ class DeliveryAssignmentServiceImplTest {
         }
 
         @Test
-        @DisplayName("getAssignments - should return list")
-        void getAssignments_shouldReturnList() {
+        @DisplayName("getAssignments - should filter by riderId")
+        void getAssignments_byRiderId_shouldReturnList() {
             when(deliveryAssignmentRepository.findByRiderId(10L)).thenReturn(List.of(deliveryAssignment));
 
             List<DeliveryAssignmentResponseDto> results = deliveryAssignmentService.getAssignments(10L, null, null);
 
             assertThat(results).hasSize(1);
             assertThat(results.get(0).id()).isEqualTo(50L);
+        }
+
+        @Test
+        @DisplayName("getAssignments - should filter by riderId and orderId when both provided")
+        void getAssignments_byRiderIdAndOrderId_shouldReturnList() {
+            when(deliveryAssignmentRepository.findByRiderIdAndOrderId(10L, 100L)).thenReturn(List.of(deliveryAssignment));
+
+            List<DeliveryAssignmentResponseDto> results = deliveryAssignmentService.getAssignments(10L, 100L, null);
+
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).id()).isEqualTo(50L);
+            verify(deliveryAssignmentRepository).findByRiderIdAndOrderId(10L, 100L);
+        }
+
+        @Test
+        @DisplayName("getAssignments - should filter by riderId, orderId, and status when all provided")
+        void getAssignments_byRiderIdAndOrderIdAndStatus_shouldReturnList() {
+            when(deliveryAssignmentRepository.findByRiderIdAndOrderIdAndStatus(10L, 100L, DeliveryAssignmentStatus.ASSIGNED))
+                    .thenReturn(List.of(deliveryAssignment));
+
+            List<DeliveryAssignmentResponseDto> results = deliveryAssignmentService.getAssignments(10L, 100L, DeliveryAssignmentStatus.ASSIGNED);
+
+            assertThat(results).hasSize(1);
+            assertThat(results.get(0).id()).isEqualTo(50L);
+            verify(deliveryAssignmentRepository).findByRiderIdAndOrderIdAndStatus(10L, 100L, DeliveryAssignmentStatus.ASSIGNED);
         }
     }
 }

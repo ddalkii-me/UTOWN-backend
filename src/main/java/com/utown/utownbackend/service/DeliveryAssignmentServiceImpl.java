@@ -40,7 +40,9 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
         Order order = orderRepository.findById(request.orderId())
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + request.orderId()));
 
-        if (order.getStatus() != OrderStatus.ACCEPTED && order.getStatus() != OrderStatus.IN_PREPARATION) {
+        if (order.getStatus() != OrderStatus.ACCEPTED
+                && order.getStatus() != OrderStatus.IN_PREPARATION
+                && order.getStatus() != OrderStatus.READY_FOR_PICKUP) {
             throw new IllegalStateException("Order is not ready for delivery assignment (status: " + order.getStatus() + ")");
         }
 
@@ -58,6 +60,13 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
         if (!Boolean.TRUE.equals(rider.getAvailability())) {
             throw new IllegalStateException("Rider is not available for delivery");
         }
+
+        if (deliveryAssignmentRepository.existsByRiderIdAndStatusIn(request.riderId(), ACTIVE_STATUSES)) {
+            throw new ResourceConflictException("Rider already has an active delivery assignment: " + request.riderId());
+        }
+
+        rider.setAvailability(false);
+        riderProfileRepository.save(rider);
 
         DeliveryAssignment assignment = new DeliveryAssignment();
         assignment.setOrder(order);
@@ -84,12 +93,16 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
     public List<DeliveryAssignmentResponseDto> getAssignments(Long riderId, Long orderId, DeliveryAssignmentStatus status) {
         List<DeliveryAssignment> list;
 
-        if (riderId != null && status != null) {
+        if (riderId != null && orderId != null && status != null) {
+            list = deliveryAssignmentRepository.findByRiderIdAndOrderIdAndStatus(riderId, orderId, status);
+        } else if (riderId != null && orderId != null) {
+            list = deliveryAssignmentRepository.findByRiderIdAndOrderId(riderId, orderId);
+        } else if (riderId != null && status != null) {
             list = deliveryAssignmentRepository.findByRiderIdAndStatus(riderId, status);
-        } else if (riderId != null) {
-            list = deliveryAssignmentRepository.findByRiderId(riderId);
         } else if (orderId != null && status != null) {
             list = deliveryAssignmentRepository.findByOrderIdAndStatus(orderId, status);
+        } else if (riderId != null) {
+            list = deliveryAssignmentRepository.findByRiderId(riderId);
         } else if (orderId != null) {
             list = deliveryAssignmentRepository.findByOrderId(orderId);
         } else if (status != null) {
@@ -162,6 +175,12 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
             orderRepository.save(order);
         }
 
+        RiderProfile rider = assignment.getRider();
+        if (rider != null && rider.getStatus() == RiderStatus.ACTIVE) {
+            rider.setAvailability(true);
+            riderProfileRepository.save(rider);
+        }
+
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
         log.info("Delivery completed for assignment ID: {}", id);
         return mapToResponseDto(saved);
@@ -178,6 +197,13 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
         }
 
         assignment.setStatus(DeliveryAssignmentStatus.CANCELLED);
+
+        RiderProfile rider = assignment.getRider();
+        if (rider != null && rider.getStatus() == RiderStatus.ACTIVE) {
+            rider.setAvailability(true);
+            riderProfileRepository.save(rider);
+        }
+
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
         log.info("Cancelled delivery assignment ID: {}", id);
         return mapToResponseDto(saved);

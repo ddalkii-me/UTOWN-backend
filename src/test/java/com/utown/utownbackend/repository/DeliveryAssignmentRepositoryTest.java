@@ -201,6 +201,52 @@ class DeliveryAssignmentRepositoryTest {
     }
 
     @Test
+    @DisplayName("findByRiderIdAndOrderId - should return assignments matching both rider and order")
+    void findByRiderIdAndOrderId_shouldReturnMatches() {
+        List<DeliveryAssignment> results = deliveryAssignmentRepository.findByRiderIdAndOrderId(
+                riderProfile.getId(), order1.getId()
+        );
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getId()).isEqualTo(da1.getId());
+
+        List<DeliveryAssignment> emptyResults = deliveryAssignmentRepository.findByRiderIdAndOrderId(
+                riderProfile.getId(), 999L
+        );
+        assertThat(emptyResults).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByRiderIdAndOrderIdAndStatus - should return assignments matching rider, order, and status")
+    void findByRiderIdAndOrderIdAndStatus_shouldReturnMatches() {
+        List<DeliveryAssignment> results = deliveryAssignmentRepository.findByRiderIdAndOrderIdAndStatus(
+                riderProfile.getId(), order1.getId(), DeliveryAssignmentStatus.ASSIGNED
+        );
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getId()).isEqualTo(da1.getId());
+
+        List<DeliveryAssignment> mismatchStatus = deliveryAssignmentRepository.findByRiderIdAndOrderIdAndStatus(
+                riderProfile.getId(), order1.getId(), DeliveryAssignmentStatus.DELIVERED
+        );
+        assertThat(mismatchStatus).isEmpty();
+    }
+
+    @Test
+    @DisplayName("existsByRiderIdAndStatusIn - should check active assignment existence for rider")
+    void existsByRiderIdAndStatusIn_shouldCheckActiveAssignmentsForRider() {
+        List<DeliveryAssignmentStatus> activeStatuses = List.of(
+                DeliveryAssignmentStatus.ASSIGNED,
+                DeliveryAssignmentStatus.ACCEPTED,
+                DeliveryAssignmentStatus.PICKED_UP
+        );
+
+        boolean activeForRider = deliveryAssignmentRepository.existsByRiderIdAndStatusIn(riderProfile.getId(), activeStatuses);
+        boolean activeForUnknownRider = deliveryAssignmentRepository.existsByRiderIdAndStatusIn(999L, activeStatuses);
+
+        assertThat(activeForRider).isTrue();
+        assertThat(activeForUnknownRider).isFalse();
+    }
+
+    @Test
     @DisplayName("findFirstByOrderIdAndStatusIn - should find active assignment")
     void findFirstByOrderIdAndStatusIn_shouldFindActive() {
         List<DeliveryAssignmentStatus> activeStatuses = List.of(
