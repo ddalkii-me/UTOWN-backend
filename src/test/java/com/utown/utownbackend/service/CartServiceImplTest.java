@@ -217,7 +217,7 @@ class CartServiceImplTest {
         when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
         when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L)).thenReturn(List.of());
         when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of(existingItem));
-        when(cartItemOptionRepository.findAllByCartItemId(10L)).thenReturn(List.of());
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(10L))).thenReturn(List.of());
 
         CartResponseDto response = cartService.addItemToCart(1L, request, false);
 
@@ -358,8 +358,8 @@ class CartServiceImplTest {
     }
 
     @Test
-    @DisplayName("updateCartItemQuantity - removes item when quantity is 0")
-    void updateCartItemQuantity_zeroQuantity_removesItem() {
+    @DisplayName("updateCartItemQuantity - throws IllegalArgumentException when quantity is 0 or negative")
+    void updateCartItemQuantity_zeroQuantity_throwsIllegalArgumentException() {
         UpdateCartItemRequestDto request = new UpdateCartItemRequestDto(0);
 
         Cart cart = new Cart();
@@ -375,13 +375,237 @@ class CartServiceImplTest {
         when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(cart));
         when(cartItemRepository.findByIdAndCartId(10L, 1L)).thenReturn(Optional.of(item));
-        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of());
 
-        CartResponseDto response = cartService.updateCartItemQuantity(1L, 10L, request);
+        assertThatThrownBy(() -> cartService.updateCartItemQuantity(1L, 10L, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Quantity must be at least 1");
+
+        verify(cartItemRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("addItemToCart - creates separate cart item when same dish is added with different options")
+    void addItemToCart_sameDishDifferentOptions_createsSeparateCartItem() {
+        DishOptionGroup optionGroup = new DishOptionGroup();
+        optionGroup.setId(500L);
+        optionGroup.setDish(dish);
+        optionGroup.setName("Spice Level");
+
+        DishOption option1 = new DishOption();
+        option1.setId(1L);
+        option1.setName("Mild");
+        option1.setAdditionalPrice(BigDecimal.ZERO);
+        option1.setStatus(DishOptionStatus.AVAILABLE);
+        option1.setOptionGroup(optionGroup);
+
+        DishOption option2 = new DishOption();
+        option2.setId(2L);
+        option2.setName("Extra Hot");
+        option2.setAdditionalPrice(new BigDecimal("1.50"));
+        option2.setStatus(DishOptionStatus.AVAILABLE);
+        option2.setOptionGroup(optionGroup);
+
+        Cart existingCart = new Cart();
+        existingCart.setId(1L);
+        existingCart.setUser(activeUser);
+        existingCart.setRestaurant(restaurant);
+        existingCart.setStatus(CartStatus.ACTIVE);
+
+        CartItem existingItem = new CartItem();
+        existingItem.setId(10L);
+        existingItem.setDish(dish);
+        existingItem.setQuantity(1);
+        existingItem.setUnitPrice(new BigDecimal("12.00"));
+        existingItem.setSubtotal(new BigDecimal("12.00"));
+
+        CartItemOption existingItemOption = new CartItemOption();
+        existingItemOption.setId(100L);
+        existingItemOption.setCartItem(existingItem);
+        existingItemOption.setDishOption(option1);
+        existingItemOption.setOptionName("Mild");
+        existingItemOption.setOptionPrice(BigDecimal.ZERO);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 2, List.of(2L));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(existingCart));
+        when(cartRepository.save(any(Cart.class))).thenReturn(existingCart);
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(2L)).thenReturn(Optional.of(option2));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L)).thenReturn(List.of(optionGroup));
+        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of(existingItem));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(10L))).thenReturn(List.of(existingItemOption));
+
+        CartItem newItem = new CartItem();
+        newItem.setId(20L);
+        newItem.setDish(dish);
+        newItem.setQuantity(2);
+        newItem.setUnitPrice(new BigDecimal("12.00"));
+        newItem.setSubtotal(new BigDecimal("27.00"));
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(newItem);
+
+        CartResponseDto response = cartService.addItemToCart(1L, request, false);
 
         assertThat(response).isNotNull();
-        verify(cartItemOptionRepository).deleteAllByCartItemId(10L);
-        verify(cartItemRepository).delete(item);
+        assertThat(existingItem.getQuantity()).isEqualTo(1);
+        verify(cartItemRepository).save(argThat(item -> item != existingItem));
+        verify(cartItemOptionRepository).save(any(CartItemOption.class));
+    }
+
+    @Test
+    @DisplayName("addItemToCart - throws IllegalArgumentException when duplicate option IDs are provided")
+    void addItemToCart_duplicateOptionIds_throwsIllegalArgument() {
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of(1L, 1L));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, request, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Duplicate options provided");
+    }
+
+    @Test
+    @DisplayName("addItemToCart - throws IllegalArgumentException when option is unavailable")
+    void addItemToCart_unavailableOption_throwsIllegalArgument() {
+        DishOption unavailableOption = new DishOption();
+        unavailableOption.setId(1L);
+        unavailableOption.setName("Sold Out Option");
+        unavailableOption.setStatus(DishOptionStatus.UNAVAILABLE);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of(1L));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(unavailableOption));
+
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, request, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("is currently unavailable");
+    }
+
+    @Test
+    @DisplayName("addItemToCart - throws IllegalArgumentException when option belongs to different dish")
+    void addItemToCart_optionDifferentDish_throwsIllegalArgument() {
+        Dish otherDish = new Dish();
+        otherDish.setId(999L);
+
+        DishOptionGroup otherGroup = new DishOptionGroup();
+        otherGroup.setId(500L);
+        otherGroup.setDish(otherDish);
+
+        DishOption option = new DishOption();
+        option.setId(1L);
+        option.setName("Wrong Dish Option");
+        option.setStatus(DishOptionStatus.AVAILABLE);
+        option.setOptionGroup(otherGroup);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of(1L));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(option));
+
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, request, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not belong to dish");
+    }
+
+    @Test
+    @DisplayName("addItemToCart - throws IllegalArgumentException when required option group is missing")
+    void addItemToCart_missingRequiredOptionGroup_throwsIllegalArgument() {
+        DishOptionGroup requiredGroup = new DishOptionGroup();
+        requiredGroup.setId(500L);
+        requiredGroup.setDish(dish);
+        requiredGroup.setName("Choice of Protein");
+        requiredGroup.setRequired(true);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of());
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L))
+                .thenReturn(List.of(requiredGroup));
+
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, request, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Missing required option group");
+    }
+
+    @Test
+    @DisplayName("addItemToCart - throws IllegalArgumentException when selections are below minSelections")
+    void addItemToCart_minSelectionsNotMet_throwsIllegalArgument() {
+        DishOptionGroup group = new DishOptionGroup();
+        group.setId(500L);
+        group.setDish(dish);
+        group.setName("Toppings");
+        group.setMinSelections(2);
+
+        DishOption opt1 = new DishOption();
+        opt1.setId(1L);
+        opt1.setName("Topping 1");
+        opt1.setStatus(DishOptionStatus.AVAILABLE);
+        opt1.setOptionGroup(group);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of(1L));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(opt1));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L))
+                .thenReturn(List.of(group));
+
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, request, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Minimum selections not met for group");
+    }
+
+    @Test
+    @DisplayName("addItemToCart - throws IllegalArgumentException when selections exceed maxSelections")
+    void addItemToCart_maxSelectionsExceeded_throwsIllegalArgument() {
+        DishOptionGroup group = new DishOptionGroup();
+        group.setId(500L);
+        group.setDish(dish);
+        group.setName("Choice of Base");
+        group.setMaxSelections(1);
+
+        DishOption opt1 = new DishOption();
+        opt1.setId(1L);
+        opt1.setName("Rice");
+        opt1.setStatus(DishOptionStatus.AVAILABLE);
+        opt1.setOptionGroup(group);
+
+        DishOption opt2 = new DishOption();
+        opt2.setId(2L);
+        opt2.setName("Noodles");
+        opt2.setStatus(DishOptionStatus.AVAILABLE);
+        opt2.setOptionGroup(group);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of(1L, 2L));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(opt1));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(2L)).thenReturn(Optional.of(opt2));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L))
+                .thenReturn(List.of(group));
+
+        assertThatThrownBy(() -> cartService.addItemToCart(1L, request, false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Maximum selections exceeded for group");
     }
 
     @Test
@@ -426,5 +650,162 @@ class CartServiceImplTest {
         verify(cartItemOptionRepository).deleteAllByCartItemIdIn(List.of(10L));
         verify(cartItemRepository).deleteAllByCartId(1L);
         verify(cartRepository).delete(cart);
+    }
+
+    @Test
+    @DisplayName("updateCartItemQuantity - throws EntityNotFoundException and cleans up when cart is expired")
+    void updateCartItemQuantity_expiredCart_throwsAndCleansUp() {
+        Cart expiredCart = new Cart();
+        expiredCart.setId(1L);
+        expiredCart.setUser(activeUser);
+        expiredCart.setStatus(CartStatus.EXPIRED);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(expiredCart));
+        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> cartService.updateCartItemQuantity(1L, 10L, new UpdateCartItemRequestDto(2)))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("expired");
+
+        verify(cartRepository).delete(expiredCart);
+    }
+
+    @Test
+    @DisplayName("removeCartItem - throws EntityNotFoundException and cleans up when cart is expired")
+    void removeCartItem_expiredCart_throwsAndCleansUp() {
+        Cart expiredCart = new Cart();
+        expiredCart.setId(1L);
+        expiredCart.setUser(activeUser);
+        expiredCart.setExpiresAt(LocalDateTime.now().minusHours(2));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(expiredCart));
+        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> cartService.removeCartItem(1L, 10L))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("expired");
+
+        verify(cartRepository).delete(expiredCart);
+    }
+
+    @Test
+    @DisplayName("clearCart - cleans up expired cart successfully")
+    void clearCart_expiredCart_cleansUpSuccessfully() {
+        Cart expiredCart = new Cart();
+        expiredCart.setId(1L);
+        expiredCart.setUser(activeUser);
+        expiredCart.setStatus(CartStatus.EXPIRED);
+
+        CartItem item = new CartItem();
+        item.setId(10L);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(expiredCart));
+        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of(item));
+
+        cartService.clearCart(1L);
+
+        verify(cartItemOptionRepository).deleteAllByCartItemIdIn(List.of(10L));
+        verify(cartItemRepository).deleteAllByCartId(1L);
+        verify(cartRepository).delete(expiredCart);
+    }
+
+    @Test
+    @DisplayName("addItemToCart - merge with changed live option price uses stored snapshot price for subtotal")
+    void addItemToCart_mergeWithChangedLiveOptionPrice_usesStoredSnapshotPrice() {
+        DishOption liveOption = new DishOption();
+        liveOption.setId(50L);
+        liveOption.setName("Extra Cheese");
+        liveOption.setAdditionalPrice(new BigDecimal("4.00")); // live price changed to 4.00
+        liveOption.setStatus(DishOptionStatus.AVAILABLE);
+
+        DishOptionGroup group = new DishOptionGroup();
+        group.setId(500L);
+        group.setName("Toppings");
+        group.setDish(dish);
+        liveOption.setOptionGroup(group);
+
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, List.of(50L));
+
+        Cart existingCart = new Cart();
+        existingCart.setId(1L);
+        existingCart.setUser(activeUser);
+        existingCart.setRestaurant(restaurant);
+        existingCart.setStatus(CartStatus.ACTIVE);
+
+        CartItem existingItem = new CartItem();
+        existingItem.setId(10L);
+        existingItem.setDish(dish);
+        existingItem.setQuantity(1);
+        existingItem.setUnitPrice(new BigDecimal("10.00"));
+        existingItem.setSubtotal(new BigDecimal("12.00")); // 10.00 + 2.00
+
+        CartItemOption storedOption = new CartItemOption();
+        storedOption.setId(1001L);
+        storedOption.setCartItem(existingItem);
+        storedOption.setDishOption(liveOption);
+        storedOption.setOptionName("Extra Cheese");
+        storedOption.setOptionPrice(new BigDecimal("2.00")); // stored snapshot was 2.00
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(existingCart));
+        when(cartRepository.save(any(Cart.class))).thenReturn(existingCart);
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(Optional.of(liveOption));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L)).thenReturn(List.of(group));
+        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of(existingItem));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(10L))).thenReturn(List.of(storedOption));
+
+        CartResponseDto response = cartService.addItemToCart(1L, request, false);
+
+        assertThat(response).isNotNull();
+        assertThat(existingItem.getQuantity()).isEqualTo(2);
+        // Subtotal must be (10.00 unitPrice + 2.00 storedOptionPrice) * 2 = 24.00, NOT 28.00
+        assertThat(existingItem.getSubtotal()).isEqualByComparingTo("24.00");
+        assertThat(response.totalAmount()).isEqualByComparingTo("24.00");
+        assertThat(response.items().get(0).options().get(0).optionPrice()).isEqualByComparingTo("2.00");
+    }
+
+    @Test
+    @DisplayName("addItemToCart - batch-fetches options for matching dishes to prevent N+1 queries")
+    void addItemToCart_matchingDishItems_usesBatchQueryWithoutNPlusOne() {
+        AddToCartRequestDto request = new AddToCartRequestDto(10L, 100L, 1, null);
+
+        Cart existingCart = new Cart();
+        existingCart.setId(1L);
+        existingCart.setUser(activeUser);
+        existingCart.setRestaurant(restaurant);
+        existingCart.setStatus(CartStatus.ACTIVE);
+
+        CartItem item1 = new CartItem();
+        item1.setId(10L);
+        item1.setDish(dish);
+        item1.setQuantity(1);
+        item1.setUnitPrice(new BigDecimal("12.00"));
+        item1.setSubtotal(new BigDecimal("12.00"));
+
+        CartItem item2 = new CartItem();
+        item2.setId(20L);
+        item2.setDish(dish);
+        item2.setQuantity(1);
+        item2.setUnitPrice(new BigDecimal("12.00"));
+        item2.setSubtotal(new BigDecimal("12.00"));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeUser));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(existingCart));
+        when(cartRepository.save(any(Cart.class))).thenReturn(existingCart);
+        when(dishRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(dish));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(100L)).thenReturn(List.of());
+        when(cartItemRepository.findAllByCartId(1L)).thenReturn(List.of(item1, item2));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(10L, 20L))).thenReturn(List.of());
+
+        cartService.addItemToCart(1L, request, false);
+
+        verify(cartItemOptionRepository, atLeastOnce()).findAllByCartItemIdIn(List.of(10L, 20L));
+        verify(cartItemOptionRepository, never()).findAllByCartItemId(anyLong());
     }
 }

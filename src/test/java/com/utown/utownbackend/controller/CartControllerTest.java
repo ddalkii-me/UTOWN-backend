@@ -57,19 +57,6 @@ class CartControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/users/{userId}/cart - returns 200 OK with cart response")
-    void getUserCart_returns200() throws Exception {
-        CartResponseDto response = CartResponseDto.empty(10L);
-
-        when(cartService.getCart(10L)).thenReturn(response);
-
-        mockMvc.perform(get("/api/users/10/cart"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalItems").value(0))
-                .andExpect(jsonPath("$.totalAmount").value(0));
-    }
-
-    @Test
     @DisplayName("POST /api/cart/items - returns 201 Created on valid addition")
     void addItemToCart_returns201() throws Exception {
         AddToCartRequestDto request = new AddToCartRequestDto(5L, 100L, 2, List.of(1L, 2L));
@@ -103,21 +90,6 @@ class CartControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/users/{userId}/cart/items - returns 201 Created on user route")
-    void addUserCartItem_returns201() throws Exception {
-        AddToCartRequestDto request = new AddToCartRequestDto(5L, 100L, 1, null);
-        CartResponseDto response = CartResponseDto.empty(10L);
-
-        when(cartService.addItemToCart(eq(10L), any(AddToCartRequestDto.class), eq(false)))
-                .thenReturn(response);
-
-        mockMvc.perform(post("/api/users/10/cart/items")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
     @DisplayName("PUT /api/cart/items/{itemId} - returns 200 OK on update")
     void updateCartItem_returns200() throws Exception {
         UpdateCartItemRequestDto request = new UpdateCartItemRequestDto(3);
@@ -138,6 +110,18 @@ class CartControllerTest {
     }
 
     @Test
+    @DisplayName("PUT /api/cart/items/{itemId} - returns 400 Bad Request on invalid quantity <= 0")
+    void updateCartItem_invalidQuantity_returns400() throws Exception {
+        UpdateCartItemRequestDto request = new UpdateCartItemRequestDto(0);
+
+        mockMvc.perform(put("/api/cart/items/50")
+                        .param("userId", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("DELETE /api/cart/items/{itemId} - returns 200 OK on removal")
     void removeCartItem_returns200() throws Exception {
         CartResponseDto response = CartResponseDto.empty(10L);
@@ -155,15 +139,6 @@ class CartControllerTest {
     void clearCart_returns204() throws Exception {
         mockMvc.perform(delete("/api/cart")
                         .param("userId", "10"))
-                .andExpect(status().isNoContent());
-
-        verify(cartService).clearCart(10L);
-    }
-
-    @Test
-    @DisplayName("DELETE /api/users/{userId}/cart - returns 204 No Content on user route clear")
-    void clearUserCart_returns204() throws Exception {
-        mockMvc.perform(delete("/api/users/10/cart"))
                 .andExpect(status().isNoContent());
 
         verify(cartService).clearCart(10L);
