@@ -22,4 +22,6 @@ public interface RiderProfileService {
     RiderProfileResponseDto updateStatus(Long id, RiderStatusUpdateRequestDto request);
 
     void deleteRiderProfile(Long id);
+
+    void deactivateRiderProfileByUserId(Long userId);
 }

@@ -136,4 +136,59 @@ class RiderProfileRepositoryTest {
         List<RiderProfile> none = riderProfileRepository.findByStatusAndAvailability(RiderStatus.ACTIVE, false);
         assertThat(none).isEmpty();
     }
+
+    @Test
+    @DisplayName("findByIdAndUserDeletedAtIsNull - should return profile when user is active and empty when user is soft-deleted")
+    void findByIdAndUserDeletedAtIsNull_shouldFilterSoftDeletedUser() {
+        Optional<RiderProfile> foundBefore = riderProfileRepository.findByIdAndUserDeletedAtIsNull(rider1.getId());
+        assertThat(foundBefore).isPresent();
+
+        user1.setDeletedAt(java.time.LocalDateTime.now());
+        entityManager.persist(user1);
+        entityManager.flush();
+
+        Optional<RiderProfile> foundAfter = riderProfileRepository.findByIdAndUserDeletedAtIsNull(rider1.getId());
+        assertThat(foundAfter).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByUserIdAndUserDeletedAtIsNull - should return empty when user is soft-deleted")
+    void findByUserIdAndUserDeletedAtIsNull_shouldFilterSoftDeletedUser() {
+        user1.setDeletedAt(java.time.LocalDateTime.now());
+        entityManager.persist(user1);
+        entityManager.flush();
+
+        Optional<RiderProfile> found = riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(user1.getId());
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByUserDeletedAtIsNull - should exclude profiles whose user is soft-deleted")
+    void findByUserDeletedAtIsNull_shouldExcludeSoftDeletedUsers() {
+        List<RiderProfile> allBefore = riderProfileRepository.findByUserDeletedAtIsNull();
+        assertThat(allBefore).hasSize(2);
+
+        user2.setDeletedAt(java.time.LocalDateTime.now());
+        entityManager.persist(user2);
+        entityManager.flush();
+
+        List<RiderProfile> allAfter = riderProfileRepository.findByUserDeletedAtIsNull();
+        assertThat(allAfter).hasSize(1);
+        assertThat(allAfter.get(0).getUser().getId()).isEqualTo(user1.getId());
+    }
+
+    @Test
+    @DisplayName("entityGraph - eagerly fetches user so accessing user does not trigger secondary queries")
+    void entityGraph_eagerlyFetchesUser() {
+        entityManager.flush();
+        entityManager.clear();
+
+        List<RiderProfile> profiles = riderProfileRepository.findByUserDeletedAtIsNull();
+        assertThat(profiles).isNotEmpty();
+        for (RiderProfile profile : profiles) {
+            assertThat(profile.getUser()).isNotNull();
+            assertThat(profile.getUser().getName()).isNotNull();
+            assertThat(profile.getUser().getEmail()).isNotNull();
+        }
+    }
 }
