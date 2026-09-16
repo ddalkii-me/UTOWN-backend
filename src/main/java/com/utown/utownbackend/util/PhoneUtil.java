@@ -20,28 +20,20 @@ public final class PhoneUtil {
             return null;
         }
 
-        String normalized = phone.replaceAll("[^0-9+]", "");
+        String trimmed = phone.trim();
+        boolean startsWithPlus = trimmed.startsWith("+");
+        String digitsOnly = trimmed.replaceAll("[^0-9]", "");
 
-        // Ensure '+' is only at the beginning
-        if (normalized.indexOf('+') > 0) {
-            normalized = normalized.substring(0, 1) + normalized.substring(1).replace("+", "");
-        }
-
-        // Add default +82 country code for Korea
-        if (!normalized.startsWith("+")) {
-            if (normalized.startsWith("0")) {
-                normalized = "+82" + normalized.substring(1);
-            } else {
-                normalized = "+82" + normalized;
-            }
-        }
-
-        // Check if there are enough digits (at least 7 for local, usually 10+ for international)
-        long digitCount = normalized.chars().filter(Character::isDigit).count();
-        if (digitCount < 7) {
+        if (digitsOnly.length() < 7) {
             throw new IllegalArgumentException("Phone number does not contain enough digits");
         }
 
-        return normalized;
+        if (startsWithPlus) {
+            return "+" + digitsOnly;
+        } else if (digitsOnly.startsWith("0")) {
+            return "+82" + digitsOnly.substring(1);
+        } else {
+            return "+82" + digitsOnly;
+        }
     }
 }

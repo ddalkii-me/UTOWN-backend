@@ -283,5 +283,40 @@ public class TestDataFactory {
 
     public static UserStatusUpdateRequestDto createUserStatusUpdateRequestDto(UserStatus status) {
         return new UserStatusUpdateRequestDto(status);
+    public static RiderProfile createRiderProfile(Long id, User user, TransportType transportType, Boolean availability, RiderStatus status) {
+        RiderProfile rider = new RiderProfile();
+        rider.setId(id);
+        rider.setUser(user);
+        rider.setTransportType(transportType != null ? transportType : TransportType.MOTORCYCLE);
+        rider.setAvailability(availability != null ? availability : true);
+        rider.setStatus(status != null ? status : RiderStatus.ACTIVE);
+        rider.setCreatedAt(LocalDateTime.now());
+        rider.setUpdatedAt(LocalDateTime.now());
+        return rider;
+    }
+
+    public static RiderProfileRequestDto createRiderProfileRequestDto(Long userId, TransportType transportType) {
+        return new RiderProfileRequestDto(
+                userId,
+                transportType != null ? transportType : TransportType.MOTORCYCLE,
+                true,
+                RiderStatus.ACTIVE
+        );
+    }
+
+    public static RiderProfileResponseDto createRiderProfileResponseDto(Long id, Long userId) {
+        return new RiderProfileResponseDto(
+                id,
+                userId,
+                "Test Rider",
+                "01012345678",
+                "rider@example.com",
+                TransportType.MOTORCYCLE,
+                true,
+                RiderStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
     }
 }
+
