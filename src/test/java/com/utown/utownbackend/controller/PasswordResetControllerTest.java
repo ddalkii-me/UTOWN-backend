@@ -49,7 +49,7 @@ class PasswordResetControllerTest {
         @DisplayName("Valid phone - returns 200 OK with cooldown and message")
         void request_success() throws Exception {
             PasswordResetRequestDto request = new PasswordResetRequestDto("010-1234-5678");
-            PasswordResetRequestResponseDto response = new PasswordResetRequestResponseDto("Verification code sent successfully", 60);
+            PasswordResetRequestResponseDto response = new PasswordResetRequestResponseDto("If an account exists, a verification code has been sent", 60);
 
             when(passwordResetService.requestPasswordReset(any())).thenReturn(response);
 
@@ -57,7 +57,7 @@ class PasswordResetControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.message").value("Verification code sent successfully"))
+                    .andExpect(jsonPath("$.message").value("If an account exists, a verification code has been sent"))
                     .andExpect(jsonPath("$.cooldownSeconds").value(60));
         }
 
@@ -103,18 +103,19 @@ class PasswordResetControllerTest {
         }
 
         @Test
-        @DisplayName("User not found - returns 404 Not Found")
-        void request_userNotFound_returnsNotFound() throws Exception {
-            PasswordResetRequestDto request = new PasswordResetRequestDto("010-1234-5678");
+        @DisplayName("User not found - returns 200 OK with generic message to prevent account enumeration")
+        void request_userNotFound_returnsOkWithGenericMessage() throws Exception {
+            PasswordResetRequestDto request = new PasswordResetRequestDto("010-9999-9999");
+            PasswordResetRequestResponseDto response = new PasswordResetRequestResponseDto("If an account exists, a verification code has been sent", 60);
 
-            when(passwordResetService.requestPasswordReset(any()))
-                    .thenThrow(new EntityNotFoundException("User not found with phone: 010-1234-5678"));
+            when(passwordResetService.requestPasswordReset(any())).thenReturn(response);
 
             mockMvc.perform(post("/api/auth/password-reset/request")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.title").value("Resource Not Found"));
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("If an account exists, a verification code has been sent"))
+                    .andExpect(jsonPath("$.cooldownSeconds").value(60));
         }
     }
 

@@ -127,12 +127,41 @@ class PasswordResetIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Password reset successfully"));
 
-        // 4. Verify password is changed in DB and old refresh token is revoked
+        // Check auth code resetAt is stamped
+        AuthCode resetAuthCode = authCodeRepository.findById(authCode.getId()).orElseThrow();
+        assertThat(resetAuthCode.getResetAt()).isNotNull();
+
+        // 4. Verify token cannot be reused (Single-Use Token Enforcement)
+        PasswordResetConfirmDto reuseAttemptDto = new PasswordResetConfirmDto(resetToken, "anotherNewPassword456");
+
+        mockMvc.perform(post("/api/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reuseAttemptDto)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.title").value("Unauthorized"));
+
+        // 5. Verify password is changed in DB and old refresh token is revoked
         User updatedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches("brandNewPassword123", updatedUser.getPassword())).isTrue();
         assertThat(passwordEncoder.matches("oldPassword123", updatedUser.getPassword())).isFalse();
 
         assertThat(refreshTokenRepository.findByUser(updatedUser)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Request Code - non-existent user returns 200 OK with generic message and creates no code")
+    void requestCode_nonExistentUser_returnsOkGenericMessage() throws Exception {
+        PasswordResetRequestDto requestDto = new PasswordResetRequestDto("01099998888");
+
+        mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("If an account exists, a verification code has been sent"))
+                .andExpect(jsonPath("$.cooldownSeconds").value(60));
+
+        // Verify no AuthCode was created
+        assertThat(authCodeRepository.findAll()).noneMatch(ac -> "+821099998888".equals(ac.getUser().getPhone()));
     }
 
     @Test

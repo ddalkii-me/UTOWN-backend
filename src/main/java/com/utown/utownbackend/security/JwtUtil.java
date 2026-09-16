@@ -29,6 +29,9 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expirationMs;
 
+    @Value("${jwt.reset-token-expiration:900000}")
+    private long resetTokenExpirationMs = 15 * 60 * 1000L;
+
     private SecretKey signingKey;
 
     public JwtUtil() {
@@ -36,8 +39,13 @@ public class JwtUtil {
 
     // Constructor for testing without Spring context
     public JwtUtil(String secret, long expirationMs) {
+        this(secret, expirationMs, 15 * 60 * 1000L);
+    }
+
+    public JwtUtil(String secret, long expirationMs, long resetTokenExpirationMs) {
         this.secret = secret;
         this.expirationMs = expirationMs;
+        this.resetTokenExpirationMs = resetTokenExpirationMs;
         init();
     }
 
@@ -143,12 +151,18 @@ public class JwtUtil {
     }
 
     public String generatePasswordResetToken(String phone, Long userId) {
+        return generatePasswordResetToken(phone, userId, null);
+    }
+
+    public String generatePasswordResetToken(String phone, Long userId, Long codeId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("purpose", "PASSWORD_RESET");
         if (userId != null) {
             claims.put("userId", userId);
         }
-        long resetTokenExpirationMs = 15 * 60 * 1000L; // 15 minutes
+        if (codeId != null) {
+            claims.put("codeId", codeId);
+        }
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + resetTokenExpirationMs);
 
@@ -182,6 +196,16 @@ public class JwtUtil {
             Object userIdObj = claims.get("userId");
             if (userIdObj instanceof Number) {
                 return ((Number) userIdObj).longValue();
+            }
+            return null;
+        });
+    }
+
+    public Long extractPasswordResetCodeId(String token) {
+        return extractClaim(token, claims -> {
+            Object codeIdObj = claims.get("codeId");
+            if (codeIdObj instanceof Number) {
+                return ((Number) codeIdObj).longValue();
             }
             return null;
         });

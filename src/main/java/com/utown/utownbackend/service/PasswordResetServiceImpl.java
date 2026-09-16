@@ -40,6 +40,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
+    private final SmsService smsService;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -51,8 +52,13 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             throw new IllegalArgumentException("Invalid phone number format");
         }
 
-        User user = userRepository.findByPhoneAndDeletedAtIsNull(normalizedPhone)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with phone: " + request.phone()));
+        Optional<User> userOpt = userRepository.findByPhoneAndDeletedAtIsNull(normalizedPhone);
+        if (userOpt.isEmpty()) {
+            log.info("Password reset requested for non-existent phone: {}", normalizedPhone);
+            return new PasswordResetRequestResponseDto("If an account exists, a verification code has been sent", COOLDOWN_SECONDS);
+        }
+
+        User user = userOpt.get();
 
         Optional<AuthCode> latestCodeOpt = authCodeRepository
                 .findTopByUserAndPurposeOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET);
@@ -81,9 +87,10 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
         authCodeRepository.save(authCode);
 
+        smsService.sendVerificationCode(normalizedPhone, rawCode);
         log.info("Dispatched password reset verification code to phone: {}", normalizedPhone);
 
-        return new PasswordResetRequestResponseDto("Verification code sent successfully", COOLDOWN_SECONDS);
+        return new PasswordResetRequestResponseDto("If an account exists, a verification code has been sent", COOLDOWN_SECONDS);
     }
 
     @Override
@@ -118,7 +125,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         authCode.setUsedAt(LocalDateTime.now());
         authCodeRepository.save(authCode);
 
-        String resetToken = jwtUtil.generatePasswordResetToken(user.getPhone(), user.getId());
+        String resetToken = jwtUtil.generatePasswordResetToken(user.getPhone(), user.getId(), authCode.getId());
 
         return new PasswordResetVerifyResponseDto(resetToken, RESET_TOKEN_EXPIRATION_SECONDS);
     }
@@ -135,8 +142,31 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             throw new InvalidTokenException("Invalid token claims");
         }
 
+        Long codeId = jwtUtil.extractPasswordResetCodeId(request.resetToken());
+        if (codeId == null) {
+            throw new InvalidTokenException("Invalid token claims");
+        }
+
+        AuthCode authCode = authCodeRepository.findById(codeId)
+                .orElseThrow(() -> new InvalidTokenException("Invalid password reset token"));
+
+        if (authCode.getResetAt() != null) {
+            throw new InvalidTokenException("Password reset token has already been used");
+        }
+
+        if (authCode.getUsedAt() == null) {
+            throw new InvalidTokenException("Verification code was not verified");
+        }
+
         User user = userRepository.findByPhoneAndDeletedAtIsNull(phone)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (!authCode.getUser().getId().equals(user.getId())) {
+            throw new InvalidTokenException("Invalid token claims");
+        }
+
+        authCode.setResetAt(LocalDateTime.now());
+        authCodeRepository.save(authCode);
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);

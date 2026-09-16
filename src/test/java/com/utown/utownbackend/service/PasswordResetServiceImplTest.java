@@ -53,6 +53,9 @@ class PasswordResetServiceImplTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private SmsService smsService;
+
     @InjectMocks
     private PasswordResetServiceImpl passwordResetService;
 
@@ -69,7 +72,7 @@ class PasswordResetServiceImplTest {
     class RequestPasswordResetTests {
 
         @Test
-        @DisplayName("Success - creates new AuthCode with 60s cooldown and 5m expiry")
+        @DisplayName("Success - creates new AuthCode with 60s cooldown, 5m expiry, dispatches SMS")
         void requestPasswordReset_success() {
             PasswordResetRequestDto request = new PasswordResetRequestDto("010-1234-5678");
 
@@ -82,7 +85,7 @@ class PasswordResetServiceImplTest {
 
             assertThat(response).isNotNull();
             assertThat(response.cooldownSeconds()).isEqualTo(60);
-            assertThat(response.message()).containsIgnoringCase("code");
+            assertThat(response.message()).isEqualTo("If an account exists, a verification code has been sent");
 
             ArgumentCaptor<AuthCode> authCodeCaptor = ArgumentCaptor.forClass(AuthCode.class);
             verify(authCodeRepository).save(authCodeCaptor.capture());
@@ -94,20 +97,25 @@ class PasswordResetServiceImplTest {
             assertThat(saved.getAttempts()).isEqualTo(0);
             assertThat(saved.getUsedAt()).isNull();
             assertThat(saved.getExpiresAt()).isAfter(LocalDateTime.now().plusMinutes(4));
+
+            verify(smsService).sendVerificationCode(eq("+821012345678"), anyString());
         }
 
         @Test
-        @DisplayName("User not found - throws EntityNotFoundException")
+        @DisplayName("User not found - returns generic response and does not save AuthCode or send SMS")
         void requestPasswordReset_userNotFound() {
             PasswordResetRequestDto request = new PasswordResetRequestDto("010-1234-5678");
 
             when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> passwordResetService.requestPasswordReset(request))
-                    .isInstanceOf(EntityNotFoundException.class)
-                    .hasMessageContaining("User not found");
+            PasswordResetRequestResponseDto response = passwordResetService.requestPasswordReset(request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.cooldownSeconds()).isEqualTo(60);
+            assertThat(response.message()).isEqualTo("If an account exists, a verification code has been sent");
 
             verify(authCodeRepository, never()).save(any());
+            verify(smsService, never()).sendVerificationCode(any(), any());
         }
 
         @Test
@@ -177,7 +185,7 @@ class PasswordResetServiceImplTest {
             when(authCodeRepository.findTopByUserAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET))
                     .thenReturn(Optional.of(authCode));
             when(passwordEncoder.matches("123456", "hashedCode")).thenReturn(true);
-            when(jwtUtil.generatePasswordResetToken("+821012345678", 1L)).thenReturn("mocked.reset.token");
+            when(jwtUtil.generatePasswordResetToken("+821012345678", 1L, 10L)).thenReturn("mocked.reset.token");
 
             PasswordResetVerifyResponseDto response = passwordResetService.verifyPasswordReset(request);
 
@@ -279,20 +287,66 @@ class PasswordResetServiceImplTest {
     class ConfirmPasswordResetTests {
 
         @Test
-        @DisplayName("Success - updates password and revokes all refresh tokens")
+        @DisplayName("Success - updates password, marks reset token used, and revokes all refresh tokens")
         void confirmPasswordReset_success() {
             PasswordResetConfirmDto request = new PasswordResetConfirmDto("valid.reset.token", "newSecurePassword123");
 
+            AuthCode authCode = TestDataFactory.createAuthCode(10L, user, "hashedCode", AuthCodePurpose.PASSWORD_RESET);
+            authCode.setUsedAt(LocalDateTime.now().minusMinutes(1));
+
             when(jwtUtil.validatePasswordResetToken("valid.reset.token")).thenReturn(true);
             when(jwtUtil.extractPasswordResetPhone("valid.reset.token")).thenReturn("+821012345678");
+            when(jwtUtil.extractPasswordResetCodeId("valid.reset.token")).thenReturn(10L);
+            when(authCodeRepository.findById(10L)).thenReturn(Optional.of(authCode));
             when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.of(user));
             when(passwordEncoder.encode("newSecurePassword123")).thenReturn("newHashedPassword");
 
             passwordResetService.confirmPasswordReset(request);
 
             assertThat(user.getPassword()).isEqualTo("newHashedPassword");
+            assertThat(authCode.getResetAt()).isNotNull();
+            verify(authCodeRepository).save(authCode);
             verify(userRepository).save(user);
             verify(refreshTokenService).deleteByUserId(1L);
+        }
+
+        @Test
+        @DisplayName("Reset token already used - throws InvalidTokenException to prevent reuse")
+        void confirmPasswordReset_tokenAlreadyUsed_throwsInvalidTokenException() {
+            PasswordResetConfirmDto request = new PasswordResetConfirmDto("already.used.token", "newSecurePassword123");
+
+            AuthCode authCode = TestDataFactory.createAuthCode(10L, user, "hashedCode", AuthCodePurpose.PASSWORD_RESET);
+            authCode.setUsedAt(LocalDateTime.now().minusMinutes(5));
+            authCode.setResetAt(LocalDateTime.now().minusMinutes(1)); // already used
+
+            when(jwtUtil.validatePasswordResetToken("already.used.token")).thenReturn(true);
+            when(jwtUtil.extractPasswordResetPhone("already.used.token")).thenReturn("+821012345678");
+            when(jwtUtil.extractPasswordResetCodeId("already.used.token")).thenReturn(10L);
+            when(authCodeRepository.findById(10L)).thenReturn(Optional.of(authCode));
+
+            assertThatThrownBy(() -> passwordResetService.confirmPasswordReset(request))
+                    .isInstanceOf(InvalidTokenException.class)
+                    .hasMessageContaining("already been used");
+
+            verify(userRepository, never()).save(any());
+            verify(refreshTokenService, never()).deleteByUserId(any());
+        }
+
+        @Test
+        @DisplayName("Missing codeId claim in token - throws InvalidTokenException")
+        void confirmPasswordReset_missingCodeId_throwsInvalidTokenException() {
+            PasswordResetConfirmDto request = new PasswordResetConfirmDto("token.missing.codeId", "newSecurePassword123");
+
+            when(jwtUtil.validatePasswordResetToken("token.missing.codeId")).thenReturn(true);
+            when(jwtUtil.extractPasswordResetPhone("token.missing.codeId")).thenReturn("+821012345678");
+            when(jwtUtil.extractPasswordResetCodeId("token.missing.codeId")).thenReturn(null);
+
+            assertThatThrownBy(() -> passwordResetService.confirmPasswordReset(request))
+                    .isInstanceOf(InvalidTokenException.class)
+                    .hasMessageContaining("claims");
+
+            verify(userRepository, never()).save(any());
+            verify(refreshTokenService, never()).deleteByUserId(any());
         }
 
         @Test
@@ -315,8 +369,13 @@ class PasswordResetServiceImplTest {
         void confirmPasswordReset_userNotFound() {
             PasswordResetConfirmDto request = new PasswordResetConfirmDto("valid.token.for.deleted.user", "newSecurePassword123");
 
+            AuthCode authCode = TestDataFactory.createAuthCode(10L, user, "hashedCode", AuthCodePurpose.PASSWORD_RESET);
+            authCode.setUsedAt(LocalDateTime.now().minusMinutes(1));
+
             when(jwtUtil.validatePasswordResetToken("valid.token.for.deleted.user")).thenReturn(true);
             when(jwtUtil.extractPasswordResetPhone("valid.token.for.deleted.user")).thenReturn("+821012345678");
+            when(jwtUtil.extractPasswordResetCodeId("valid.token.for.deleted.user")).thenReturn(10L);
+            when(authCodeRepository.findById(10L)).thenReturn(Optional.of(authCode));
             when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> passwordResetService.confirmPasswordReset(request))
