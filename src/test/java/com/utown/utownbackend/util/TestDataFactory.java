@@ -269,6 +269,8 @@ public class TestDataFactory {
         authCode.setCreatedAt(LocalDateTime.now());
         authCode.setUpdatedAt(LocalDateTime.now());
         return authCode;
+    }
+
     public static RiderProfile createRiderProfile(Long id, User user, TransportType transportType, Boolean availability, RiderStatus status) {
         RiderProfile rider = new RiderProfile();
         rider.setId(id);
