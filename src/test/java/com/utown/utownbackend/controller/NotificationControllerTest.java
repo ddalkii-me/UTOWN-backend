@@ -152,6 +152,36 @@ class NotificationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/notifications - message exceeding 255 chars should return 400 Bad Request")
+    void createNotification_messageExceeds255_shouldReturn400() throws Exception {
+        String longMessage = "a".repeat(256);
+        NotificationRequestDto invalid = new NotificationRequestDto(
+                1L, NotificationType.ORDER_STATUS_CHANGED, "Title", longMessage
+        );
+
+        mockMvc.perform(post("/api/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation Failed"));
+    }
+
+    @Test
+    @DisplayName("POST /api/notifications - title exceeding 255 chars should return 400 Bad Request")
+    void createNotification_titleExceeds255_shouldReturn400() throws Exception {
+        String longTitle = "a".repeat(256);
+        NotificationRequestDto invalid = new NotificationRequestDto(
+                1L, NotificationType.ORDER_STATUS_CHANGED, longTitle, "Valid message"
+        );
+
+        mockMvc.perform(post("/api/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation Failed"));
+    }
+
+    @Test
     @DisplayName("GET /api/notifications/{id}?userId=1 - should return 200 OK when found")
     void getNotificationById_shouldReturn200() throws Exception {
         when(notificationService.getNotificationById(10L, 1L)).thenReturn(responseDto);
