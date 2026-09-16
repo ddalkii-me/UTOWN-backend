@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+
+# Maven build output
+target/
+
+# IDE / Editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Documentation & Diagrams
+*.md
+*.drawio
+*.json
+!pom.xml
+
+# Environment files
+.env
+.env.*
