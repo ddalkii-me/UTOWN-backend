@@ -283,6 +283,8 @@ public class TestDataFactory {
 
     public static UserStatusUpdateRequestDto createUserStatusUpdateRequestDto(UserStatus status) {
         return new UserStatusUpdateRequestDto(status);
+    }
+
     public static RiderProfile createRiderProfile(Long id, User user, TransportType transportType, Boolean availability, RiderStatus status) {
         RiderProfile rider = new RiderProfile();
         rider.setId(id);
