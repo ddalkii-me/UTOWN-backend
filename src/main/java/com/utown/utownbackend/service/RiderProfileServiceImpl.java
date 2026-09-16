@@ -70,16 +70,6 @@ public class RiderProfileServiceImpl implements RiderProfileService {
             log.info("Updated role to RIDER for user ID: {}", user.getId());
         }
 
-        RiderStatus status = request.status() != null ? request.status() : RiderStatus.ACTIVE;
-        boolean availability = request.availability() != null ? request.availability() : true;
-
-        if ((status == RiderStatus.SUSPENDED || status == RiderStatus.INACTIVE) && Boolean.TRUE.equals(request.availability())) {
-            throw new IllegalArgumentException("Cannot create available rider with status: " + status);
-        }
-        if (status == RiderStatus.SUSPENDED || status == RiderStatus.INACTIVE) {
-            availability = false;
-        }
-
         RiderProfile riderProfile = new RiderProfile();
         riderProfile.setUser(user);
         riderProfile.setTransportType(request.transportType());

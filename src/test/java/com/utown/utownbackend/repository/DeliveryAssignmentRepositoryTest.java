@@ -259,4 +259,42 @@ class DeliveryAssignmentRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(da1.getId());
     }
+
+    @Test
+    @DisplayName("EntityGraph - should eagerly fetch order, restaurant, rider, and rider user to prevent N+1")
+    void entityGraph_shouldEagerlyFetchAllAssociations() {
+        entityManager.flush();
+        entityManager.clear();
+
+        List<DeliveryAssignment> results = deliveryAssignmentRepository.findByStatus(DeliveryAssignmentStatus.ASSIGNED);
+        assertThat(results).hasSize(1);
+
+        DeliveryAssignment assignment = results.get(0);
+        assertThat(assignment.getOrder()).isNotNull();
+        assertThat(assignment.getOrder().getOrderNumber()).isEqualTo("ORD-1001");
+        assertThat(assignment.getOrder().getRestaurant()).isNotNull();
+        assertThat(assignment.getOrder().getRestaurant().getName()).isEqualTo("Seoul Kitchen");
+
+        assertThat(assignment.getRider()).isNotNull();
+        assertThat(assignment.getRider().getUser()).isNotNull();
+        assertThat(assignment.getRider().getUser().getName()).isEqualTo("Rider");
+        assertThat(assignment.getRider().getUser().getPhone()).isEqualTo("01011110002");
+    }
+
+    @Test
+    @DisplayName("EntityGraph on findByRiderId - should eagerly fetch associations")
+    void entityGraph_findByRiderId_shouldEagerlyFetchAssociations() {
+        entityManager.flush();
+        entityManager.clear();
+
+        List<DeliveryAssignment> results = deliveryAssignmentRepository.findByRiderId(riderProfile.getId());
+        assertThat(results).hasSize(2);
+
+        for (DeliveryAssignment assignment : results) {
+            assertThat(assignment.getOrder()).isNotNull();
+            assertThat(assignment.getOrder().getRestaurant()).isNotNull();
+            assertThat(assignment.getRider()).isNotNull();
+            assertThat(assignment.getRider().getUser()).isNotNull();
+        }
+    }
 }
