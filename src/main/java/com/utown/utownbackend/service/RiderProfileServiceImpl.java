@@ -1,10 +1,7 @@
 package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.*;
-import com.utown.utownbackend.entity.RiderProfile;
-import com.utown.utownbackend.entity.RiderStatus;
-import com.utown.utownbackend.entity.User;
-import com.utown.utownbackend.entity.UserRole;
+import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.exception.ResourceConflictException;
 import com.utown.utownbackend.repository.RiderProfileRepository;
 import com.utown.utownbackend.repository.UserRepository;
@@ -15,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -33,8 +31,37 @@ public class RiderProfileServiceImpl implements RiderProfileService {
                 .filter(u -> u.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + request.userId()));
 
-        if (riderProfileRepository.existsByUserId(request.userId())) {
-            throw new ResourceConflictException("Rider profile already exists for user ID: " + request.userId());
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalArgumentException("Cannot create rider profile for non-active user with status: " + user.getStatus());
+        }
+
+        RiderStatus status = request.status() != null ? request.status() : RiderStatus.ACTIVE;
+        boolean availability = request.availability() != null ? request.availability() : true;
+
+        if ((status == RiderStatus.SUSPENDED || status == RiderStatus.INACTIVE) && Boolean.TRUE.equals(request.availability())) {
+            throw new IllegalArgumentException("Cannot create available rider with status: " + status);
+        }
+        if (status == RiderStatus.SUSPENDED || status == RiderStatus.INACTIVE) {
+            availability = false;
+        }
+
+        Optional<RiderProfile> existingProfileOpt = riderProfileRepository.findByUserId(request.userId());
+        if (existingProfileOpt.isPresent()) {
+            RiderProfile existing = existingProfileOpt.get();
+            if (existing.getStatus() != RiderStatus.INACTIVE) {
+                throw new ResourceConflictException("Rider profile already exists for user ID: " + request.userId());
+            }
+            existing.setTransportType(request.transportType());
+            existing.setStatus(status);
+            existing.setAvailability(availability);
+            if (user.getRole() != UserRole.RIDER) {
+                user.setRole(UserRole.RIDER);
+                userRepository.save(user);
+                log.info("Restored role to RIDER for user ID: {}", user.getId());
+            }
+            RiderProfile saved = riderProfileRepository.save(existing);
+            log.info("Reactivated rider profile with ID: {} for user ID: {}", saved.getId(), user.getId());
+            return mapToResponseDto(saved);
         }
 
         if (user.getRole() != UserRole.RIDER) {
@@ -68,7 +95,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     @Override
     @Transactional(readOnly = true)
     public RiderProfileResponseDto getRiderProfileById(Long id) {
-        return riderProfileRepository.findById(id)
+        return riderProfileRepository.findByIdAndUserDeletedAtIsNull(id)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
     }
@@ -76,7 +103,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     @Override
     @Transactional(readOnly = true)
     public RiderProfileResponseDto getRiderProfileByUserId(Long userId) {
-        return riderProfileRepository.findByUserId(userId)
+        return riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(userId)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found for user id: " + userId));
     }
@@ -87,13 +114,13 @@ public class RiderProfileServiceImpl implements RiderProfileService {
         List<RiderProfile> list;
 
         if (status != null && availability != null) {
-            list = riderProfileRepository.findByStatusAndAvailability(status, availability);
+            list = riderProfileRepository.findByStatusAndAvailabilityAndUserDeletedAtIsNull(status, availability);
         } else if (status != null) {
-            list = riderProfileRepository.findByStatus(status);
+            list = riderProfileRepository.findByStatusAndUserDeletedAtIsNull(status);
         } else if (availability != null) {
-            list = riderProfileRepository.findByAvailability(availability);
+            list = riderProfileRepository.findByAvailabilityAndUserDeletedAtIsNull(availability);
         } else {
-            list = riderProfileRepository.findAll();
+            list = riderProfileRepository.findByUserDeletedAtIsNull();
         }
 
         return list.stream()
@@ -105,6 +132,11 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     public RiderProfileResponseDto updateRiderProfile(Long id, RiderProfileUpdateRequestDto request) {
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
+
+        User user = rider.getUser();
+        if (user != null && user.getDeletedAt() != null) {
+            throw new EntityNotFoundException("Rider profile not found with id: " + id);
+        }
 
         if (request.transportType() != null) {
             rider.setTransportType(request.transportType());
@@ -119,6 +151,11 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     public RiderProfileResponseDto updateAvailability(Long id, RiderAvailabilityUpdateRequestDto request) {
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
+
+        User user = rider.getUser();
+        if (user != null && user.getDeletedAt() != null) {
+            throw new EntityNotFoundException("Rider profile not found with id: " + id);
+        }
 
         if (Boolean.TRUE.equals(request.availability()) && (rider.getStatus() == RiderStatus.SUSPENDED || rider.getStatus() == RiderStatus.INACTIVE)) {
             throw new IllegalStateException("Cannot set availability to true for rider with status: " + rider.getStatus());
@@ -135,6 +172,24 @@ public class RiderProfileServiceImpl implements RiderProfileService {
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
+        User user = rider.getUser();
+        if (user != null && user.getDeletedAt() != null) {
+            throw new EntityNotFoundException("Rider profile not found with id: " + id);
+        }
+
+        if (request.status() == RiderStatus.ACTIVE) {
+            if (user != null) {
+                if (user.getStatus() != UserStatus.ACTIVE) {
+                    throw new IllegalStateException("Cannot activate rider profile for non-active user with status: " + user.getStatus());
+                }
+                if (user.getRole() != UserRole.RIDER) {
+                    user.setRole(UserRole.RIDER);
+                    userRepository.save(user);
+                    log.info("Restored role to RIDER for user ID: {}", user.getId());
+                }
+            }
+        }
+
         rider.setStatus(request.status());
         if (request.status() == RiderStatus.SUSPENDED || request.status() == RiderStatus.INACTIVE) {
             rider.setAvailability(false);
@@ -150,15 +205,34 @@ public class RiderProfileServiceImpl implements RiderProfileService {
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
+        User user = rider.getUser();
+        if (user != null && user.getDeletedAt() != null) {
+            throw new EntityNotFoundException("Rider profile not found with id: " + id);
+        }
+
         rider.setStatus(RiderStatus.INACTIVE);
         rider.setAvailability(false);
-        User user = rider.getUser();
         if (user != null && user.getRole() == UserRole.RIDER) {
             user.setRole(UserRole.CUSTOMER);
             userRepository.save(user);
         }
         riderProfileRepository.save(rider);
         log.info("Deactivated rider profile with ID: {}", id);
+    }
+
+    @Override
+    public void deactivateRiderProfileByUserId(Long userId) {
+        riderProfileRepository.findByUserId(userId).ifPresent(rider -> {
+            rider.setStatus(RiderStatus.INACTIVE);
+            rider.setAvailability(false);
+            User user = rider.getUser();
+            if (user != null && user.getRole() == UserRole.RIDER) {
+                user.setRole(UserRole.CUSTOMER);
+                userRepository.save(user);
+            }
+            riderProfileRepository.save(rider);
+            log.info("Deactivated rider profile for user ID: {}", userId);
+        });
     }
 
     private RiderProfileResponseDto mapToResponseDto(RiderProfile rider) {

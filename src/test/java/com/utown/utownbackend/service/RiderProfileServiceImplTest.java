@@ -65,7 +65,7 @@ class RiderProfileServiceImplTest {
             );
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(riderProfileRepository.existsByUserId(1L)).thenReturn(false);
+            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
             when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(invocation -> {
                 RiderProfile r = invocation.getArgument(0);
                 r.setId(10L);
@@ -95,7 +95,7 @@ class RiderProfileServiceImplTest {
             );
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(riderProfileRepository.existsByUserId(1L)).thenReturn(false);
+            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
             when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(invocation -> {
                 RiderProfile r = invocation.getArgument(0);
                 r.setId(10L);
@@ -143,20 +143,82 @@ class RiderProfileServiceImplTest {
         }
 
         @Test
-        @DisplayName("createRiderProfile - should throw ResourceConflictException when rider profile already exists")
-        void createRiderProfile_alreadyExists_shouldThrow() {
+        @DisplayName("createRiderProfile - should throw IllegalArgumentException when user is SUSPENDED")
+        void createRiderProfile_suspendedUser_shouldThrowIllegalArgumentException() {
+            user.setStatus(UserStatus.SUSPENDED);
+            RiderProfileRequestDto request = new RiderProfileRequestDto(
+                    1L, TransportType.CAR, true, RiderStatus.ACTIVE
+            );
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> riderProfileService.createRiderProfile(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Cannot create rider profile for non-active user");
+
+            verify(riderProfileRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("createRiderProfile - should throw IllegalArgumentException when user is INACTIVE")
+        void createRiderProfile_inactiveUser_shouldThrowIllegalArgumentException() {
+            user.setStatus(UserStatus.INACTIVE);
+            RiderProfileRequestDto request = new RiderProfileRequestDto(
+                    1L, TransportType.CAR, true, RiderStatus.ACTIVE
+            );
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> riderProfileService.createRiderProfile(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Cannot create rider profile for non-active user");
+
+            verify(riderProfileRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("createRiderProfile - should throw ResourceConflictException when active or suspended rider profile already exists")
+        void createRiderProfile_activeProfileExists_shouldThrowConflict() {
             RiderProfileRequestDto request = new RiderProfileRequestDto(
                     1L, TransportType.BICYCLE, true, RiderStatus.ACTIVE
             );
 
+            riderProfile.setStatus(RiderStatus.ACTIVE);
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(riderProfileRepository.existsByUserId(1L)).thenReturn(true);
+            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.of(riderProfile));
 
             assertThatThrownBy(() -> riderProfileService.createRiderProfile(request))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Rider profile already exists");
 
             verify(riderProfileRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("createRiderProfile - should reactivate and restore RIDER role when existing profile is INACTIVE")
+        void createRiderProfile_inactiveProfileExists_shouldReactivateAndRestoreRole() {
+            user.setRole(UserRole.CUSTOMER);
+            riderProfile.setStatus(RiderStatus.INACTIVE);
+            riderProfile.setAvailability(false);
+            riderProfile.setTransportType(TransportType.BICYCLE);
+
+            RiderProfileRequestDto request = new RiderProfileRequestDto(
+                    1L, TransportType.CAR, true, RiderStatus.ACTIVE
+            );
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.of(riderProfile));
+            when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(i -> i.getArgument(0));
+
+            RiderProfileResponseDto response = riderProfileService.createRiderProfile(request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.transportType()).isEqualTo(TransportType.CAR);
+            assertThat(response.status()).isEqualTo(RiderStatus.ACTIVE);
+            assertThat(response.availability()).isTrue();
+            assertThat(user.getRole()).isEqualTo(UserRole.RIDER);
+            verify(userRepository).save(user);
+            verify(riderProfileRepository).save(riderProfile);
         }
 
         @Test
@@ -167,7 +229,6 @@ class RiderProfileServiceImplTest {
             );
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(riderProfileRepository.existsByUserId(1L)).thenReturn(false);
 
             assertThatThrownBy(() -> riderProfileService.createRiderProfile(request))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -184,7 +245,7 @@ class RiderProfileServiceImplTest {
             );
 
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(riderProfileRepository.existsByUserId(1L)).thenReturn(false);
+            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
             when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(i -> i.getArgument(0));
 
             RiderProfileResponseDto response = riderProfileService.createRiderProfile(request);
@@ -199,9 +260,9 @@ class RiderProfileServiceImplTest {
     class GetRiderProfileTests {
 
         @Test
-        @DisplayName("getRiderProfileById - should return DTO when found")
+        @DisplayName("getRiderProfileById - should return DTO when found and user not deleted")
         void getRiderProfileById_shouldReturnDto() {
-            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+            when(riderProfileRepository.findByIdAndUserDeletedAtIsNull(10L)).thenReturn(Optional.of(riderProfile));
 
             RiderProfileResponseDto response = riderProfileService.getRiderProfileById(10L);
 
@@ -215,7 +276,7 @@ class RiderProfileServiceImplTest {
         @Test
         @DisplayName("getRiderProfileById - should throw EntityNotFoundException when not found")
         void getRiderProfileById_notFound_shouldThrow() {
-            when(riderProfileRepository.findById(99L)).thenReturn(Optional.empty());
+            when(riderProfileRepository.findByIdAndUserDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> riderProfileService.getRiderProfileById(99L))
                     .isInstanceOf(EntityNotFoundException.class)
@@ -223,9 +284,19 @@ class RiderProfileServiceImplTest {
         }
 
         @Test
-        @DisplayName("getRiderProfileByUserId - should return DTO when found")
+        @DisplayName("getRiderProfileById - should throw EntityNotFoundException when user is soft-deleted")
+        void getRiderProfileById_softDeletedUser_shouldThrowEntityNotFoundException() {
+            when(riderProfileRepository.findByIdAndUserDeletedAtIsNull(10L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> riderProfileService.getRiderProfileById(10L))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Rider profile not found");
+        }
+
+        @Test
+        @DisplayName("getRiderProfileByUserId - should return DTO when found and user not deleted")
         void getRiderProfileByUserId_shouldReturnDto() {
-            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.of(riderProfile));
+            when(riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(1L)).thenReturn(Optional.of(riderProfile));
 
             RiderProfileResponseDto response = riderProfileService.getRiderProfileByUserId(1L);
 
@@ -237,7 +308,7 @@ class RiderProfileServiceImplTest {
         @Test
         @DisplayName("getRiderProfileByUserId - should throw EntityNotFoundException when not found")
         void getRiderProfileByUserId_notFound_shouldThrow() {
-            when(riderProfileRepository.findByUserId(99L)).thenReturn(Optional.empty());
+            when(riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> riderProfileService.getRiderProfileByUserId(99L))
                     .isInstanceOf(EntityNotFoundException.class)
@@ -245,9 +316,19 @@ class RiderProfileServiceImplTest {
         }
 
         @Test
+        @DisplayName("getRiderProfileByUserId - should throw EntityNotFoundException when user is soft-deleted")
+        void getRiderProfileByUserId_softDeletedUser_shouldThrowEntityNotFoundException() {
+            when(riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> riderProfileService.getRiderProfileByUserId(1L))
+                    .isInstanceOf(EntityNotFoundException.class)
+                    .hasMessageContaining("Rider profile not found");
+        }
+
+        @Test
         @DisplayName("getAllRiderProfiles - with both status and availability filters")
         void getAllRiderProfiles_withBothFilters() {
-            when(riderProfileRepository.findByStatusAndAvailability(RiderStatus.ACTIVE, true))
+            when(riderProfileRepository.findByStatusAndAvailabilityAndUserDeletedAtIsNull(RiderStatus.ACTIVE, true))
                     .thenReturn(List.of(riderProfile));
 
             List<RiderProfileResponseDto> list = riderProfileService.getAllRiderProfiles(RiderStatus.ACTIVE, true);
@@ -259,7 +340,7 @@ class RiderProfileServiceImplTest {
         @Test
         @DisplayName("getAllRiderProfiles - with status filter only")
         void getAllRiderProfiles_withStatusFilter() {
-            when(riderProfileRepository.findByStatus(RiderStatus.ACTIVE))
+            when(riderProfileRepository.findByStatusAndUserDeletedAtIsNull(RiderStatus.ACTIVE))
                     .thenReturn(List.of(riderProfile));
 
             List<RiderProfileResponseDto> list = riderProfileService.getAllRiderProfiles(RiderStatus.ACTIVE, null);
@@ -270,7 +351,7 @@ class RiderProfileServiceImplTest {
         @Test
         @DisplayName("getAllRiderProfiles - with availability filter only")
         void getAllRiderProfiles_withAvailabilityFilter() {
-            when(riderProfileRepository.findByAvailability(true))
+            when(riderProfileRepository.findByAvailabilityAndUserDeletedAtIsNull(true))
                     .thenReturn(List.of(riderProfile));
 
             List<RiderProfileResponseDto> list = riderProfileService.getAllRiderProfiles(null, true);
@@ -279,9 +360,9 @@ class RiderProfileServiceImplTest {
         }
 
         @Test
-        @DisplayName("getAllRiderProfiles - without filters should return all")
+        @DisplayName("getAllRiderProfiles - without filters should return all with active users")
         void getAllRiderProfiles_noFilter() {
-            when(riderProfileRepository.findAll()).thenReturn(List.of(riderProfile));
+            when(riderProfileRepository.findByUserDeletedAtIsNull()).thenReturn(List.of(riderProfile));
 
             List<RiderProfileResponseDto> list = riderProfileService.getAllRiderProfiles(null, null);
 
@@ -390,6 +471,45 @@ class RiderProfileServiceImplTest {
             assertThat(response.status()).isEqualTo(RiderStatus.ACTIVE);
             assertThat(response.availability()).isTrue();
         }
+        @Test
+        @DisplayName("updateStatus - should restore user RIDER role when status changes to ACTIVE")
+        void updateStatus_toActive_shouldRestoreUserRiderRole() {
+            user.setRole(UserRole.CUSTOMER);
+            user.setStatus(UserStatus.ACTIVE);
+            riderProfile.setUser(user);
+            riderProfile.setStatus(RiderStatus.INACTIVE);
+            riderProfile.setAvailability(false);
+
+            RiderStatusUpdateRequestDto request = new RiderStatusUpdateRequestDto(RiderStatus.ACTIVE);
+
+            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+            when(riderProfileRepository.save(any(RiderProfile.class))).thenAnswer(i -> i.getArgument(0));
+
+            RiderProfileResponseDto response = riderProfileService.updateStatus(10L, request);
+
+            assertThat(response.status()).isEqualTo(RiderStatus.ACTIVE);
+            assertThat(user.getRole()).isEqualTo(UserRole.RIDER);
+            verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("updateStatus - should throw IllegalStateException when activating profile for non-active user")
+        void updateStatus_toActiveWhenUserSuspended_shouldThrowIllegalStateException() {
+            user.setStatus(UserStatus.SUSPENDED);
+            riderProfile.setUser(user);
+            riderProfile.setStatus(RiderStatus.INACTIVE);
+
+            RiderStatusUpdateRequestDto request = new RiderStatusUpdateRequestDto(RiderStatus.ACTIVE);
+
+            when(riderProfileRepository.findById(10L)).thenReturn(Optional.of(riderProfile));
+
+            assertThatThrownBy(() -> riderProfileService.updateStatus(10L, request))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot activate rider profile for non-active user");
+
+            verify(riderProfileRepository, never()).save(any());
+            verify(userRepository, never()).save(any());
+        }
     }
 
     @Nested
@@ -426,6 +546,25 @@ class RiderProfileServiceImplTest {
 
             verify(riderProfileRepository, never()).delete(any());
             verify(riderProfileRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deactivateRiderProfileByUserId - should soft-deactivate profile and revert user role to CUSTOMER")
+        void deactivateRiderProfileByUserId_shouldDeactivateAndRevertRole() {
+            user.setRole(UserRole.RIDER);
+            riderProfile.setUser(user);
+            riderProfile.setStatus(RiderStatus.ACTIVE);
+            riderProfile.setAvailability(true);
+
+            when(riderProfileRepository.findByUserId(1L)).thenReturn(Optional.of(riderProfile));
+
+            riderProfileService.deactivateRiderProfileByUserId(1L);
+
+            assertThat(riderProfile.getStatus()).isEqualTo(RiderStatus.INACTIVE);
+            assertThat(riderProfile.getAvailability()).isFalse();
+            assertThat(user.getRole()).isEqualTo(UserRole.CUSTOMER);
+            verify(riderProfileRepository).save(riderProfile);
+            verify(userRepository).save(user);
         }
     }
 }
