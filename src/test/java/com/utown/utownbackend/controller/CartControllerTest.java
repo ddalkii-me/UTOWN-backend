@@ -294,11 +294,6 @@ class CartControllerTest {
         mockMvc.perform(delete("/api/cart/items/50")
                         .with(csrf())
                         .param("userId", "10"))
-                .andDo(result -> {
-                    if (result.getResolvedException() != null) {
-                        result.getResolvedException().printStackTrace();
-                    }
-                })
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(0));
     }

@@ -72,9 +72,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
     }
 
-    @ExceptionHandler(org.springframework.security.authorization.AuthorizationDeniedException.class)
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<ProblemDetail> handleAuthorizationDenied(
-            org.springframework.security.authorization.AuthorizationDeniedException ex) {
+            org.springframework.security.access.AccessDeniedException ex) {
 
         log.warn("Access denied: {}", ex.getMessage());
 

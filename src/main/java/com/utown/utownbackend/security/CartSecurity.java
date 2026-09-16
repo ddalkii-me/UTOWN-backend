@@ -19,6 +19,7 @@ public class CartSecurity {
         }
 
         return userDetails.getRole() == UserRole.CUSTOMER
-                && userDetails.getId().equals(userId);
+                && userId != null
+                && userId.equals(userDetails.getId());
     }
 }
