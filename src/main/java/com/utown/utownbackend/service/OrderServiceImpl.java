@@ -14,6 +14,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.utown.utownbackend.security.CustomUserDetails;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +49,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto createOrder(OrderRequestDto request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails principal) {
+            if (principal.getRole() == UserRole.CUSTOMER && !principal.getId().equals(request.userId())) {
+                throw new AccessDeniedException("Customers can only place orders for themselves");
+            }
+        }
+
         User user = userRepository.findByIdAndDeletedAtIsNull(request.userId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + request.userId()));
 
@@ -223,12 +234,36 @@ public class OrderServiceImpl implements OrderService {
     public List<OrderResponseDto> getOrders(Long restaurantId, Long userId, List<OrderStatus> statuses) {
         Specification<Order> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            if (restaurantId != null) {
-                predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
+
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails principal) {
+                if (principal.getRole() == UserRole.CUSTOMER) {
+                    if (userId != null && !userId.equals(principal.getId())) {
+                        throw new AccessDeniedException("Customers can only view their own orders");
+                    }
+                    predicates.add(cb.equal(root.get("user").get("id"), principal.getId()));
+                } else if (principal.getRole() == UserRole.RESTAURANT_OWNER) {
+                    predicates.add(cb.equal(root.get("restaurant").get("owner").get("id"), principal.getId()));
+                    if (restaurantId != null) {
+                        predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
+                    }
+                } else if (principal.getRole() == UserRole.ADMIN) {
+                    if (restaurantId != null) {
+                        predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
+                    }
+                    if (userId != null) {
+                        predicates.add(cb.equal(root.get("user").get("id"), userId));
+                    }
+                }
+            } else {
+                if (restaurantId != null) {
+                    predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
+                }
+                if (userId != null) {
+                    predicates.add(cb.equal(root.get("user").get("id"), userId));
+                }
             }
-            if (userId != null) {
-                predicates.add(cb.equal(root.get("user").get("id"), userId));
-            }
+
             if (statuses != null && !statuses.isEmpty()) {
                 predicates.add(root.get("status").in(statuses));
             }
@@ -298,12 +333,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.IN_PREPARATION && order.getStatus() != OrderStatus.READY_FOR_PICKUP) {
+        if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new IllegalStateException("Order cannot be completed from status: " + order.getStatus());
         }
 
         order.setStatus(OrderStatus.COMPLETED);
-        order.setDeliveredAt(LocalDateTime.now());
 
         Order savedOrder = orderRepository.save(order);
         User actor = resolveActor(savedOrder);
@@ -336,6 +370,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto checkout(CheckoutRequestDto request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails principal) {
+            if (principal.getRole() == UserRole.CUSTOMER && !principal.getId().equals(request.userId())) {
+                throw new AccessDeniedException("Cannot checkout another user's cart");
+            }
+        }
+
         User user = userRepository.findByIdAndDeletedAtIsNull(request.userId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + request.userId()));
 

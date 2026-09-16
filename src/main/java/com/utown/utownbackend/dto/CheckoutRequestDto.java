@@ -4,7 +4,6 @@ import com.utown.utownbackend.entity.PaymentMethod;
 import jakarta.validation.constraints.NotNull;
 
 public record CheckoutRequestDto(
-        @NotNull(message = "User ID is required")
         Long userId,
 
         @NotNull(message = "Address ID is required")
