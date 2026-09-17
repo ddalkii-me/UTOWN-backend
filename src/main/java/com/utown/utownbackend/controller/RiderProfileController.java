@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class RiderProfileController {
     private final RiderProfileService riderProfileService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RiderProfileResponseDto> createRiderProfile(
             @Valid @RequestBody RiderProfileRequestDto request
     ) {
@@ -27,6 +29,7 @@ public class RiderProfileController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<RiderProfileResponseDto>> getAllRiderProfiles(
             @RequestParam(required = false) RiderStatus status,
             @RequestParam(required = false) Boolean availability
@@ -36,6 +39,7 @@ public class RiderProfileController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(#id, authentication)")
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileById(
             @PathVariable Long id
     ) {
@@ -44,6 +48,7 @@ public class RiderProfileController {
     }
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwnerByUserId(#userId, authentication)")
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileByUserId(
             @PathVariable Long userId
     ) {
@@ -52,6 +57,7 @@ public class RiderProfileController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(#id, authentication)")
     public ResponseEntity<RiderProfileResponseDto> updateRiderProfile(
             @PathVariable Long id,
             @Valid @RequestBody RiderProfileUpdateRequestDto request
@@ -61,6 +67,7 @@ public class RiderProfileController {
     }
 
     @PatchMapping("/{id}/availability")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(#id, authentication)")
     public ResponseEntity<RiderProfileResponseDto> updateAvailability(
             @PathVariable Long id,
             @Valid @RequestBody RiderAvailabilityUpdateRequestDto request
@@ -70,6 +77,7 @@ public class RiderProfileController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RiderProfileResponseDto> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody RiderStatusUpdateRequestDto request
@@ -79,6 +87,7 @@ public class RiderProfileController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRiderProfile(
             @PathVariable Long id
     ) {
