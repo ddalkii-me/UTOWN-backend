@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -19,6 +20,7 @@ public class CityController {
     private final CityService cityService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CityResponseDto> createCity(
             @Valid @RequestBody CityRequestDto request) {
 
@@ -29,6 +31,7 @@ public class CityController {
     }
 
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<CityResponseDto>> getAllCities() {
 
         List<CityResponseDto> cities =
@@ -38,6 +41,7 @@ public class CityController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<CityResponseDto> getCityById(
             @PathVariable Long id) {
 
@@ -48,6 +52,7 @@ public class CityController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CityResponseDto> updateCity(
             @PathVariable Long id,
             @Valid @RequestBody CityRequestDto request) {
@@ -59,6 +64,7 @@ public class CityController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCity(
             @PathVariable Long id) {
 

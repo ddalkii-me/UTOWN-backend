@@ -2,14 +2,17 @@ package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.OrderStatus;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
 public interface OrderService {
     OrderResponseDto createOrder(OrderRequestDto request);
     OrderResponseDto checkout(CheckoutRequestDto request);
-    List<OrderResponseDto> getAllOrders();
-    List<OrderResponseDto> getOrders(Long restaurantId, Long userId, List<OrderStatus> statuses);
+    List<OrderResponseDto> getOrders(Long restaurantId,
+                                     Long userId,
+                                     List<OrderStatus> statuses,
+                                     Authentication authentication);
     OrderResponseDto getOrderById(Long id);
     OrderResponseDto acceptOrder(Long id, OrderAcceptRequestDto request);
     OrderResponseDto startPreparation(Long id);

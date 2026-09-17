@@ -16,12 +16,14 @@ public class OrderSecurity {
             return false;
         }
 
-        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
             return false;
         }
 
+        Long userId = principal.getId();
+
         return orderRepository.findById(orderId)
-                .map(order -> order.getUser() != null && userDetails.getId().equals(order.getUser().getId()))
+                .map(order -> order.getUser() != null && userId.equals(order.getUser().getId()))
                 .orElse(false);
     }
 
@@ -30,15 +32,17 @@ public class OrderSecurity {
             return false;
         }
 
-        if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+        if (!(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
             return false;
         }
+
+        Long userId = principal.getId();
 
         return orderRepository.findById(orderId)
                 .map(order ->
                         order.getRestaurant() != null
                                 && order.getRestaurant().getOwner() != null
-                                && userDetails.getId().equals(order.getRestaurant().getOwner().getId())
+                                && userId.equals(order.getRestaurant().getOwner().getId())
                 )
                 .orElse(false);
     }

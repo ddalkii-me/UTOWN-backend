@@ -3,10 +3,14 @@ package com.utown.utownbackend.service;
 import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
+import com.utown.utownbackend.security.CustomUserDetails;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
@@ -225,58 +230,81 @@ public class OrderServiceImpl implements OrderService {
         return toOrderResponseDto(savedOrder, itemResponseDtos);
     }
 
-    @Override
-    public List<OrderResponseDto> getAllOrders() {
-        return getOrders(null, null, null);
-    }
 
     @Override
-    public List<OrderResponseDto> getOrders(Long restaurantId, Long userId, List<OrderStatus> statuses) {
+    public List<OrderResponseDto> getOrders(
+            Long restaurantId,
+            Long userId,
+            List<OrderStatus> statuses,
+            Authentication authentication
+    ) {
         Specification<Order> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails principal) {
-                if (principal.getRole() == UserRole.CUSTOMER) {
-                    if (userId != null && !userId.equals(principal.getId())) {
-                        throw new AccessDeniedException("Customers can only view their own orders");
-                    }
-                    predicates.add(cb.equal(root.get("user").get("id"), principal.getId()));
-                } else if (principal.getRole() == UserRole.RESTAURANT_OWNER) {
-                    predicates.add(cb.equal(root.get("restaurant").get("owner").get("id"), principal.getId()));
-                    if (restaurantId != null) {
-                        predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
-                    }
-                } else if (principal.getRole() == UserRole.ADMIN) {
-                    if (restaurantId != null) {
-                        predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
-                    }
-                    if (userId != null) {
-                        predicates.add(cb.equal(root.get("user").get("id"), userId));
-                    }
+            if (authentication == null
+                    || !(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+                throw new AccessDeniedException("Authentication required");
+            }
+
+            if (principal.getRole() == UserRole.CUSTOMER) {
+                // Customers can only see their own orders.
+                if (userId != null && !userId.equals(principal.getId())) {
+                    throw new AccessDeniedException("Customers can only view their own orders");
                 }
-            } else {
+                predicates.add(
+                        cb.equal(root.get("user").get("id"), principal.getId())
+                );
+
+            } else if (principal.getRole() == UserRole.RESTAURANT_OWNER) {
+                // Restaurant owners can only see orders from restaurants they own.
+                predicates.add(
+                        cb.equal(
+                                root.get("restaurant").get("owner").get("id"),
+                                principal.getId()
+                        )
+                );
+
+                // If a restaurantId is provided, filter to that specific restaurant.
                 if (restaurantId != null) {
-                    predicates.add(cb.equal(root.get("restaurant").get("id"), restaurantId));
+                    predicates.add(
+                            cb.equal(
+                                    root.get("restaurant").get("id"),
+                                    restaurantId
+                            )
+                    );
                 }
+            } else if (principal.getRole() == UserRole.ADMIN) {
+                // Admin can filter orders freely.
+                if (restaurantId != null) {
+                    predicates.add(
+                            cb.equal(root.get("restaurant").get("id"), restaurantId)
+                    );
+                }
+
                 if (userId != null) {
-                    predicates.add(cb.equal(root.get("user").get("id"), userId));
+                    predicates.add(
+                            cb.equal(root.get("user").get("id"), userId)
+                    );
                 }
             }
 
             if (statuses != null && !statuses.isEmpty()) {
                 predicates.add(root.get("status").in(statuses));
             }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         List<Order> orders = orderRepository.findAll(spec);
+
+
         if (orders.isEmpty()) {
             return List.of();
         }
 
         return mapOrdersToDtos(orders);
     }
+
 
     @Override
     public OrderResponseDto getOrderById(Long id) {
@@ -336,7 +364,6 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new IllegalStateException("Order cannot be completed from status: " + order.getStatus());
         }
-
         order.setStatus(OrderStatus.COMPLETED);
 
         Order savedOrder = orderRepository.save(order);

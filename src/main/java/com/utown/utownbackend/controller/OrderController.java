@@ -4,11 +4,11 @@ import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.OrderStatus;
 import com.utown.utownbackend.security.CustomUserDetails;
 import com.utown.utownbackend.service.OrderService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -65,13 +65,21 @@ public class OrderController {
     public ResponseEntity<List<OrderResponseDto>> getOrders(
             @RequestParam(required = false) Long restaurantId,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) List<OrderStatus> status
+            @RequestParam(required = false) List<OrderStatus> status,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(orderService.getOrders(restaurantId, userId, status));
+        List<OrderResponseDto> orders =
+                orderService.getOrders(restaurantId, userId, status, authentication);
+
+        return ResponseEntity.ok(orders);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isCustomer(authentication, #id) or @orderSecurity.isRestaurantOwner(authentication, #id)")
+    @PreAuthorize("""
+        hasRole('ADMIN')
+        or @orderSecurity.isCustomer(authentication, #id)
+        or @orderSecurity.isRestaurantOwner(authentication, #id)
+        """)
     public ResponseEntity<OrderResponseDto> getOrderById(
             @PathVariable Long id
     ) {

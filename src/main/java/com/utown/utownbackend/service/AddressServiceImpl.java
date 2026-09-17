@@ -2,6 +2,7 @@ package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.AddressRequestDto;
 import com.utown.utownbackend.dto.AddressResponseDto;
+import com.utown.utownbackend.dto.AddressUpdateRequestDto;
 import com.utown.utownbackend.entity.Address;
 import com.utown.utownbackend.entity.City;
 import com.utown.utownbackend.entity.DeliveryArea;
@@ -107,17 +108,12 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public AddressResponseDto updateAddress(
             Long id,
-            AddressRequestDto request) {
+            AddressUpdateRequestDto request) {
 
         Address address = addressRepository
                 .findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException("Address not found"));
-
-        User user = userRepository
-                .findByIdAndDeletedAtIsNull(request.userId())
-                .orElseThrow(() ->
-                        new EntityNotFoundException("User not found"));
 
         City city = cityRepository
                 .findByIdAndDeletedAtIsNull(request.cityId())
@@ -133,7 +129,6 @@ public class AddressServiceImpl implements AddressService {
                         new EntityNotFoundException(
                                 "Delivery area not found for this city"));
 
-        address.setUser(user);
         address.setCity(city);
         address.setDeliveryArea(deliveryArea);
         address.setLabel(request.label());

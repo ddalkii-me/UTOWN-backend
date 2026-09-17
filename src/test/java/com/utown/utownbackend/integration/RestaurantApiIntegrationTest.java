@@ -1,5 +1,6 @@
 package com.utown.utownbackend.integration;
 
+import com.utown.utownbackend.dto.RestaurantAdminUpdateRequestDto;
 import tools.jackson.databind.ObjectMapper;
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.WorkingHoursDto;
@@ -18,6 +19,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -76,6 +78,7 @@ class RestaurantApiIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("Complete restaurant lifecycle: POST -> GET -> PUT -> WORKING-HOURS -> DELETE")
     void completeRestaurantLifecycle() throws Exception {
         // 1. POST - Create restaurant
@@ -109,8 +112,8 @@ class RestaurantApiIntegrationTest {
                 .andExpect(jsonPath("$.id").value(restaurantId))
                 .andExpect(jsonPath("$.name").value("Luigi's Trattoria"));
 
-        // 3. PUT - Update restaurant
-        RestaurantRequestDto updateRequest = new RestaurantRequestDto(
+        // 3. PUT - Update restaurant as ADMIN
+        RestaurantAdminUpdateRequestDto updateRequest = new RestaurantAdminUpdateRequestDto(
                 owner.getId(), type.getId(), city.getId(),
                 "Luigi's Grand Trattoria", "Renovated Italian", "100 Gangnam-daero",
                 "02-555-9999", "http://example.com/luigi2.png",
@@ -118,7 +121,7 @@ class RestaurantApiIntegrationTest {
                 BigDecimal.valueOf(20000), RestaurantStatus.OPEN
         );
 
-        mockMvc.perform(put("/api/restaurants/{id}", restaurantId)
+        mockMvc.perform(put("/api/restaurants/{id}/admin", restaurantId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
@@ -152,6 +155,7 @@ class RestaurantApiIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/restaurants - returns 404 when owner does not exist")
     void createRestaurant_nonExistentOwner_returns404() throws Exception {
         RestaurantRequestDto invalidRequest = new RestaurantRequestDto(

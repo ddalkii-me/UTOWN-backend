@@ -93,27 +93,46 @@ class OrderControllerTest {
     @Test
     void getOrders_returnsOk() {
         OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
-        when(orderService.getOrders(10L, 1L, List.of(OrderStatus.PENDING))).thenReturn(List.of(mockResponse));
+        when(orderService.getOrders(
+                10L,
+                1L,
+                List.of(OrderStatus.PENDING),
+                null
+        )).thenReturn(List.of(mockResponse));
 
-        ResponseEntity<List<OrderResponseDto>> response = orderController.getOrders(10L, 1L, List.of(OrderStatus.PENDING));
+        ResponseEntity<List<OrderResponseDto>> response =
+                orderController.getOrders(
+                        10L,
+                        1L,
+                        List.of(OrderStatus.PENDING),
+                        null
+                );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        verify(orderService).getOrders(10L, 1L, List.of(OrderStatus.PENDING));
+
+        verify(orderService).getOrders(
+                10L,
+                1L,
+                List.of(OrderStatus.PENDING),
+                null
+        );
     }
 
     @Test
     void getOrders_withoutFilters_returnsOk() {
         OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
-        when(orderService.getOrders(null, null, null)).thenReturn(List.of(mockResponse));
+        when(orderService.getOrders(null, null, null, null)).thenReturn(List.of(mockResponse));
 
-        ResponseEntity<List<OrderResponseDto>> response = orderController.getOrders(null, null, null);
+        ResponseEntity<List<OrderResponseDto>> response =
+                orderController.getOrders(null, null, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        verify(orderService).getOrders(null, null, null);
+
+        verify(orderService).getOrders(null, null, null, null);
     }
 
     @Test

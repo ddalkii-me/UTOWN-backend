@@ -257,4 +257,146 @@ public class TestDataFactory {
     public static DishOptionResponseDto createDishOptionResponseDto(Long id, Long optionGroupId, String name) {
         return new DishOptionResponseDto(id, optionGroupId, name, new BigDecimal("1500"), 1, DishOptionStatus.AVAILABLE, null);
     }
+
+    public static RiderProfile createRiderProfile(Long id, User user, TransportType transportType, Boolean availability, RiderStatus status) {
+        RiderProfile rider = new RiderProfile();
+        rider.setId(id);
+        rider.setUser(user);
+        rider.setTransportType(transportType != null ? transportType : TransportType.MOTORCYCLE);
+        rider.setAvailability(availability != null ? availability : true);
+        rider.setStatus(status != null ? status : RiderStatus.ACTIVE);
+        rider.setCreatedAt(LocalDateTime.now());
+        rider.setUpdatedAt(LocalDateTime.now());
+        return rider;
+    }
+
+    public static RiderProfileRequestDto createRiderProfileRequestDto(Long userId, TransportType transportType) {
+        return new RiderProfileRequestDto(
+                userId,
+                transportType != null ? transportType : TransportType.MOTORCYCLE,
+                true,
+                RiderStatus.ACTIVE
+        );
+    }
+
+    public static RiderProfileResponseDto createRiderProfileResponseDto(Long id, Long userId) {
+        return new RiderProfileResponseDto(
+                id,
+                userId,
+                "Test Rider",
+                "01012345678",
+                "rider@example.com",
+                TransportType.MOTORCYCLE,
+                true,
+                RiderStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
+
+    public static Order createOrder(Long id, User user, Restaurant restaurant, Address address, OrderStatus status) {
+        Order order = new Order();
+        order.setId(id);
+        order.setOrderNumber("ORD-" + (id != null ? id : 1001L));
+        order.setUser(user);
+        order.setRestaurant(restaurant);
+        order.setAddress(address);
+        order.setStatus(status != null ? status : OrderStatus.ACCEPTED);
+        order.setSubtotal(new BigDecimal("25000"));
+        order.setDeliveryFee(new BigDecimal("3000"));
+        order.setTotalAmount(new BigDecimal("28000"));
+        order.setCurrency("KRW");
+        order.setPaymentMethod(PaymentMethod.CARD);
+        order.setPaymentStatus(PaymentStatus.PAID);
+        order.setCreatedAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
+        return order;
+    }
+
+    public static DeliveryAssignment createDeliveryAssignment(
+            Long id, Order order, RiderProfile rider, DeliveryAssignmentStatus status
+    ) {
+        DeliveryAssignment assignment = new DeliveryAssignment();
+        assignment.setId(id);
+        assignment.setOrder(order);
+        assignment.setRider(rider);
+        assignment.setStatus(status != null ? status : DeliveryAssignmentStatus.ASSIGNED);
+        assignment.setAssignedAt(LocalDateTime.now());
+        if (status == DeliveryAssignmentStatus.ACCEPTED || status == DeliveryAssignmentStatus.PICKED_UP || status == DeliveryAssignmentStatus.DELIVERED) {
+            assignment.setAcceptedAt(LocalDateTime.now());
+        }
+        if (status == DeliveryAssignmentStatus.PICKED_UP || status == DeliveryAssignmentStatus.DELIVERED) {
+            assignment.setPickedUpAt(LocalDateTime.now());
+        }
+        if (status == DeliveryAssignmentStatus.DELIVERED) {
+            assignment.setDeliveredAt(LocalDateTime.now());
+        }
+        assignment.setCreatedAt(LocalDateTime.now());
+        assignment.setUpdatedAt(LocalDateTime.now());
+        return assignment;
+    }
+
+    public static DeliveryAssignmentRequestDto createDeliveryAssignmentRequestDto(Long orderId, Long riderId) {
+        return new DeliveryAssignmentRequestDto(orderId, riderId);
+    }
+
+    public static DeliveryAssignmentResponseDto createDeliveryAssignmentResponseDto(Long id, Long orderId, Long riderId) {
+        return new DeliveryAssignmentResponseDto(
+                id,
+                orderId,
+                "ORD-" + orderId,
+                1L,
+                "Test Restaurant",
+                riderId,
+                "Test Rider",
+                "01012345678",
+                TransportType.MOTORCYCLE,
+                DeliveryAssignmentStatus.ASSIGNED,
+                LocalDateTime.now(),
+                null,
+                null,
+                null,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
+
+    public static Notification createNotification(
+            Long id, User user, NotificationType type, String title, String message, Boolean isRead
+    ) {
+        Notification notification = new Notification();
+        notification.setId(id);
+        notification.setUser(user);
+        notification.setType(type != null ? type : NotificationType.SYSTEM);
+        notification.setTitle(title != null ? title : "Test Title");
+        notification.setMessage(message != null ? message : "Test Message");
+        notification.setIsRead(isRead != null ? isRead : false);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setUpdatedAt(LocalDateTime.now());
+        return notification;
+    }
+
+    public static NotificationRequestDto createNotificationRequestDto(Long userId, NotificationType type) {
+        return new NotificationRequestDto(
+                userId,
+                type != null ? type : NotificationType.SYSTEM,
+                "Order Update",
+                "Your order has been accepted"
+        );
+    }
+
+    public static NotificationResponseDto createNotificationResponseDto(Long id, Long userId) {
+        return new NotificationResponseDto(
+                id,
+                userId,
+                NotificationType.ORDER_STATUS_CHANGED,
+                "Order Update",
+                "Your order has been accepted",
+                false,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
 }
+
+

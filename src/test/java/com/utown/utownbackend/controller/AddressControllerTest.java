@@ -1,5 +1,6 @@
 package com.utown.utownbackend.controller;
 
+import com.utown.utownbackend.dto.AddressUpdateRequestDto;
 import tools.jackson.databind.ObjectMapper;
 import com.utown.utownbackend.dto.AddressRequestDto;
 import com.utown.utownbackend.dto.AddressResponseDto;
@@ -40,11 +41,25 @@ class AddressControllerTest {
     private AddressService addressService;
 
     private AddressRequestDto requestDto;
+    private AddressUpdateRequestDto updateRequestDto;
     private AddressResponseDto responseDto;
 
     @BeforeEach
     void setUp() {
         requestDto = TestDataFactory.createAddressRequestDto(1L, 1L, 1L);
+
+        updateRequestDto = new AddressUpdateRequestDto(
+                1L,
+                1L,
+                "Work",
+                "Updated User",
+                "010-9999-9999",
+                "456 Updated Street",
+                "06100",
+                new BigDecimal("37.5000"),
+                new BigDecimal("127.0300")
+        );
+
         responseDto = TestDataFactory.createAddressResponseDto(1L, 1L, 1L, 1L);
     }
 
@@ -129,11 +144,17 @@ class AddressControllerTest {
     @Test
     @DisplayName("PUT /api/addresses/{id} - should return 200")
     void updateAddress_shouldReturn200() throws Exception {
-        when(addressService.updateAddress(eq(1L), any(AddressRequestDto.class))).thenReturn(responseDto);
 
-        mockMvc.perform(put("/api/addresses/{id}", 1L)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+        when(addressService.updateAddress(
+                eq(1L),
+                any(AddressUpdateRequestDto.class)
+        )).thenReturn(responseDto);
+
+        mockMvc.perform(
+                        put("/api/addresses/{id}", 1L)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(updateRequestDto))
+                )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L));
     }
@@ -141,12 +162,12 @@ class AddressControllerTest {
     @Test
     @DisplayName("PUT /api/addresses/{id} - should return 404 when not found")
     void updateAddress_shouldReturn404WhenNotFound() throws Exception {
-        when(addressService.updateAddress(eq(99L), any(AddressRequestDto.class)))
+        when(addressService.updateAddress(eq(99L), any(AddressUpdateRequestDto.class)))
                 .thenThrow(new EntityNotFoundException("Address not found"));
 
         mockMvc.perform(put("/api/addresses/{id}", 99L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                        .content(objectMapper.writeValueAsString(updateRequestDto)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Resource Not Found"));
     }
@@ -154,8 +175,17 @@ class AddressControllerTest {
     @Test
     @DisplayName("PUT /api/addresses/{id} - should return 400 when invalid payload")
     void updateAddress_shouldReturn400WhenInvalid() throws Exception {
-        AddressRequestDto invalidRequest = new AddressRequestDto(null, 1L, 1L, "Home", "", "123456", "", "12345", BigDecimal.valueOf(10), BigDecimal.valueOf(20));
-
+        AddressUpdateRequestDto invalidRequest = new AddressUpdateRequestDto(
+                1L,
+                1L,
+                "Home",
+                "",
+                "123456",
+                "",
+                "12345",
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(20)
+        );
         mockMvc.perform(put("/api/addresses/{id}", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
