@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class DishOptionGroupController {
     private final DishOptionGroupService dishOptionGroupService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @dishOptionGroupSecurity.isOwnerOfDish(authentication, #request.dishId())")
     public ResponseEntity<DishOptionGroupResponseDto> createDishOptionGroup(
             @Valid @RequestBody DishOptionGroupRequestDto request
     ) {
@@ -27,11 +29,13 @@ public class DishOptionGroupController {
     }
 
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionGroupResponseDto>> getAllDishOptionGroups() {
         return ResponseEntity.ok(dishOptionGroupService.getAllDishOptionGroups());
     }
 
     @GetMapping("/dish/{dishId}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionGroupResponseDto>> getDishOptionGroupsByDishId(
             @PathVariable Long dishId
     ) {
@@ -39,6 +43,7 @@ public class DishOptionGroupController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<DishOptionGroupResponseDto> getDishOptionGroupById(
             @PathVariable Long id
     ) {
@@ -46,6 +51,7 @@ public class DishOptionGroupController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @dishOptionGroupSecurity.isOwner(authentication, #id)")
     public ResponseEntity<DishOptionGroupResponseDto> updateDishOptionGroup(
             @PathVariable Long id,
             @Valid @RequestBody DishOptionGroupRequestDto request
@@ -54,6 +60,7 @@ public class DishOptionGroupController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @dishOptionGroupSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteDishOptionGroup(
             @PathVariable Long id
     ) {

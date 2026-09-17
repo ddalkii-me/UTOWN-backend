@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -19,6 +20,7 @@ public class DeliveryAreaController {
     private final DeliveryAreaService deliveryAreaService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DeliveryAreaResponseDto> createDeliveryArea(
             @Valid @RequestBody DeliveryAreaRequestDto request) {
 
@@ -31,6 +33,7 @@ public class DeliveryAreaController {
     }
 
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DeliveryAreaResponseDto>> getAllDeliveryAreas() {
 
         List<DeliveryAreaResponseDto> response =
@@ -40,6 +43,7 @@ public class DeliveryAreaController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<DeliveryAreaResponseDto> getDeliveryAreaById(
             @PathVariable Long id) {
 
@@ -50,6 +54,7 @@ public class DeliveryAreaController {
     }
 
     @GetMapping("/city/{cityId}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DeliveryAreaResponseDto>> getDeliveryAreasByCity(
             @PathVariable Long cityId) {
 
@@ -60,6 +65,7 @@ public class DeliveryAreaController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DeliveryAreaResponseDto> updateDeliveryArea(
             @PathVariable Long id,
             @Valid @RequestBody DeliveryAreaRequestDto request) {
@@ -71,6 +77,7 @@ public class DeliveryAreaController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDeliveryArea(
             @PathVariable Long id) {
 

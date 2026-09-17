@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class DishOptionController {
     private final DishOptionService dishOptionService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @dishOptionSecurity.isOwnerOfOptionGroup(authentication, #request.optionGroupId())")
     public ResponseEntity<DishOptionResponseDto> createDishOption(
             @Valid @RequestBody DishOptionRequestDto request
     ) {
@@ -27,11 +29,13 @@ public class DishOptionController {
     }
 
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionResponseDto>> getAllDishOptions() {
         return ResponseEntity.ok(dishOptionService.getAllDishOptions());
     }
 
     @GetMapping("/group/{optionGroupId}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionResponseDto>> getDishOptionsByGroupId(
             @PathVariable Long optionGroupId
     ) {
@@ -39,6 +43,7 @@ public class DishOptionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<DishOptionResponseDto> getDishOptionById(
             @PathVariable Long id
     ) {
@@ -46,6 +51,7 @@ public class DishOptionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @dishOptionSecurity.isOwner(authentication, #id)")
     public ResponseEntity<DishOptionResponseDto> updateDishOption(
             @PathVariable Long id,
             @Valid @RequestBody DishOptionRequestDto request
@@ -54,6 +60,7 @@ public class DishOptionController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @dishOptionSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteDishOption(
             @PathVariable Long id
     ) {
