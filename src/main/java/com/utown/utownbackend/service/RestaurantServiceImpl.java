@@ -1,8 +1,6 @@
 package com.utown.utownbackend.service;
 
-import com.utown.utownbackend.dto.RestaurantRequestDto;
-import com.utown.utownbackend.dto.RestaurantResponseDto;
-import com.utown.utownbackend.dto.WorkingHoursDto;
+import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -81,7 +79,38 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Override
     public RestaurantResponseDto updateRestaurant(
             Long id,
-            RestaurantRequestDto request) {
+            RestaurantOwnerUpdateRequestDto request) {
+
+        Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
+
+        RestaurantType type = restaurantTypeRepository.findById(request.typeId())
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
+
+        City city = cityRepository.findByIdAndDeletedAtIsNull(request.cityId())
+                .orElseThrow(() -> new EntityNotFoundException("City not found"));
+
+        restaurant.setType(type);
+        restaurant.setCity(city);
+        restaurant.setName(request.name());
+        restaurant.setDescription(request.description());
+        restaurant.setAddress(request.address());
+        restaurant.setPhone(request.phone());
+        restaurant.setLogoUrl(request.logoUrl());
+        restaurant.setLatitude(request.latitude());
+        restaurant.setLongitude(request.longitude());
+        restaurant.setMinimumOrderAmount(request.minimumOrderAmount());
+        restaurant.setStatus(request.status());
+
+        Restaurant updatedRestaurant = restaurantRepository.save(restaurant);
+
+        return toDto(updatedRestaurant);
+    }
+    @Transactional
+    @Override
+    public RestaurantResponseDto updateRestaurantAsAdmin(
+            Long id,
+            RestaurantAdminUpdateRequestDto request) {
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));

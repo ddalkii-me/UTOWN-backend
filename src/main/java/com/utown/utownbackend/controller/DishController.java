@@ -7,6 +7,7 @@ import com.utown.utownbackend.service.DishService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class DishController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #request.restaurantId())")
     public ResponseEntity<DishResponseDto> createDish(
             @Valid @RequestBody DishRequestDto request
     ) {
@@ -30,7 +32,7 @@ public class DishController {
     }
 
     @GetMapping
-    @org.springframework.security.access.prepost.PreAuthorize("permitAll()")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishResponseDto>> getDishes(
             @RequestParam(required = false) Long restaurantId,
             @RequestParam(required = false) Long categoryId,
@@ -42,6 +44,7 @@ public class DishController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<DishResponseDto> getDishById(
             @PathVariable Long id
     ) {
@@ -50,6 +53,7 @@ public class DishController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwner(authentication, #id)")
     public ResponseEntity<DishResponseDto> updateDishById(
             @Valid @RequestBody DishRequestDto request, @PathVariable Long id
     ) {
@@ -58,6 +62,7 @@ public class DishController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteDishById(
             @PathVariable Long id
     ) {
@@ -66,6 +71,7 @@ public class DishController {
     }
 
     @PutMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwnerOfDeletedDish(authentication, #id)")
     public ResponseEntity<Void> restoreDishById(
             @PathVariable Long id
     ) {

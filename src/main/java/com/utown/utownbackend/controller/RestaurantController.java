@@ -1,9 +1,6 @@
 package com.utown.utownbackend.controller;
 
-import com.utown.utownbackend.dto.RestaurantMenuResponseDto;
-import com.utown.utownbackend.dto.RestaurantRequestDto;
-import com.utown.utownbackend.dto.RestaurantResponseDto;
-import com.utown.utownbackend.dto.WorkingHoursDto;
+import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.service.MenuService;
 import com.utown.utownbackend.service.RestaurantService;
 import jakarta.validation.Valid;
@@ -25,6 +22,7 @@ public class RestaurantController {
     private final MenuService menuService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantResponseDto> createRestaurant(
             @Valid @RequestBody RestaurantRequestDto request) {
 
@@ -37,6 +35,7 @@ public class RestaurantController {
     }
 
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<RestaurantResponseDto>> getAllRestaurants() {
 
         List<RestaurantResponseDto> restaurants =
@@ -46,6 +45,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantResponseDto> getRestaurantById(
             @PathVariable Long id) {
 
@@ -67,6 +67,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{id}/working-hours")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<WorkingHoursDto>> getWorkingHoursById(
             @PathVariable Long id
     ) {
@@ -76,6 +77,9 @@ public class RestaurantController {
     }
 
     @PutMapping("/{id}/working-hours/{dayOfWeek}")
+    @PreAuthorize(
+            "hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #id)"
+    )
     public ResponseEntity<Void> updateWorkingHourForDay(
             @PathVariable Long id,
             @PathVariable DayOfWeek dayOfWeek,
@@ -86,9 +90,10 @@ public class RestaurantController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@restaurantSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RestaurantResponseDto> updateRestaurant(
             @PathVariable Long id,
-            @Valid @RequestBody RestaurantRequestDto request) {
+            @Valid @RequestBody RestaurantOwnerUpdateRequestDto request) {
 
         RestaurantResponseDto response =
                 restaurantService.updateRestaurant(id, request);
@@ -96,7 +101,22 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{id}/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<RestaurantResponseDto> updateRestaurantAsAdmin(
+            @PathVariable Long id,
+            @Valid @RequestBody RestaurantAdminUpdateRequestDto request) {
+
+        RestaurantResponseDto response =
+                restaurantService.updateRestaurantAsAdmin(id, request);
+
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{id}")
+    @PreAuthorize(
+            "hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #id)"
+    )
     public ResponseEntity<Void> deleteRestaurant(
             @PathVariable Long id) {
 

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ public class RestaurantDeliveryAreaController {
     private final RestaurantDeliveryAreaService restaurantDeliveryAreaService;
 
     @PostMapping("/{restaurantId}/delivery-areas/{deliveryAreaId}")
+    @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #restaurantId)")
     public ResponseEntity<RestaurantDeliveryAreaResponseDto> addDeliveryArea(
             @PathVariable Long restaurantId,
             @PathVariable Long deliveryAreaId) {
@@ -30,6 +32,7 @@ public class RestaurantDeliveryAreaController {
     }
 
     @GetMapping("/{restaurantId}/delivery-areas")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<RestaurantDeliveryAreaResponseDto>>
     getDeliveryAreasByRestaurant(
             @PathVariable Long restaurantId) {
@@ -41,6 +44,7 @@ public class RestaurantDeliveryAreaController {
     }
 
     @DeleteMapping("/{restaurantId}/delivery-areas/{deliveryAreaId}")
+    @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #restaurantId)")
     public ResponseEntity<Void> removeDeliveryArea(
             @PathVariable Long restaurantId,
             @PathVariable Long deliveryAreaId) {

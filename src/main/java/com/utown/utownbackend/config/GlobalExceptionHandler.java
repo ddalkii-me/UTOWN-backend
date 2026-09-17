@@ -7,11 +7,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.stream.Collectors;
 
@@ -58,7 +62,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-        
+
         String errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
@@ -88,8 +92,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ProblemDetail> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
 
+        String detail = (ex instanceof com.utown.utownbackend.exception.InvalidTokenException && ex.getMessage() != null)
+                ? ex.getMessage()
+                : "Invalid username or password, or unauthorized access.";
+
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-                HttpStatus.UNAUTHORIZED, "Invalid username or password, or unauthorized access.");
+                HttpStatus.UNAUTHORIZED, detail);
         problemDetail.setTitle("Unauthorized");
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problemDetail);
@@ -105,9 +113,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
     }
-    @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
-    public ResponseEntity<ProblemDetail> handleDisabledException(org.springframework.security.authentication.DisabledException ex) {
-        log.warn("Account disabled: {}", ex.getMessage());
+
+    @ExceptionHandler(org.springframework.security.authentication.AccountStatusException.class)
+    public ResponseEntity<ProblemDetail> handleAccountStatusException(org.springframework.security.authentication.AccountStatusException ex) {
+        log.warn("Account status invalid: {}", ex.getMessage());
 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Your account is suspended or inactive.");
@@ -125,5 +134,37 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problemDetail.setTitle("Concurrent Modification");
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null
+                || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken) {
+
+            ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.UNAUTHORIZED,
+                    "Authentication is required to access this resource."
+            );
+            problemDetail.setTitle("Unauthorized");
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(problemDetail);
+        }
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN,
+                "You do not have permission to access this resource."
+        );
+        problemDetail.setTitle("Forbidden");
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(problemDetail);
     }
 }

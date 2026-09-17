@@ -4,6 +4,7 @@ import com.utown.utownbackend.entity.RefreshToken;
 import com.utown.utownbackend.entity.User;
 import com.utown.utownbackend.repository.RefreshTokenRepository;
 import com.utown.utownbackend.repository.UserRepository;
+import com.utown.utownbackend.exception.InvalidTokenException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +51,7 @@ public class RefreshTokenService {
     public RefreshToken verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
             refreshTokenRepository.delete(token);
-            throw new RuntimeException("Refresh token was expired. Please make a new signin request");
+            throw new InvalidTokenException("Refresh token was expired. Please make a new signin request");
         }
         return token;
     }
