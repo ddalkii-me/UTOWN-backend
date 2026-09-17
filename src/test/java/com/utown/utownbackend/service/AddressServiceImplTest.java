@@ -2,6 +2,7 @@ package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.AddressRequestDto;
 import com.utown.utownbackend.dto.AddressResponseDto;
+import com.utown.utownbackend.dto.AddressUpdateRequestDto;
 import com.utown.utownbackend.entity.Address;
 import com.utown.utownbackend.entity.City;
 import com.utown.utownbackend.entity.DeliveryArea;
@@ -96,16 +97,30 @@ class AddressServiceImplTest {
     }
 
     @Test
-    @DisplayName("createAddress - should reject delivery area from different city")
-    void createAddress_shouldRejectDeliveryAreaFromDifferentCity() {
-        AddressRequestDto request = createRequest();
+    @DisplayName("updateAddress - should reject delivery area from different city")
+    void updateAddress_shouldRejectDeliveryAreaFromDifferentCity() {
+        AddressUpdateRequestDto request = new AddressUpdateRequestDto(
+                1L,
+                1L,
+                "Home",
+                "Test User",
+                "010-1234-5678",
+                "123 Gangnam Street",
+                "06000",
+                new BigDecimal("37.4979"),
+                new BigDecimal("127.0276")
+        );
 
-        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
-        when(cityRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(city));
-        when(deliveryAreaRepository.findByIdAndCityIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.empty());
+        when(addressRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(address));
+        when(cityRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(city));
+        when(deliveryAreaRepository.findByIdAndCityIdAndDeletedAtIsNull(1L, 1L))
+                .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> addressService.createAddress(request))
+        assertThatThrownBy(() -> addressService.updateAddress(1L, request))
                 .isInstanceOf(EntityNotFoundException.class);
+
         verify(addressRepository, never()).save(any(Address.class));
     }
 
@@ -193,12 +208,27 @@ class AddressServiceImplTest {
     }
 
     @Test
-    @DisplayName("getAddressById - should reject deleted or nonexistent address")
-    void getAddressById_shouldRejectDeletedOrNonexistentAddress() {
-        when(addressRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+    @DisplayName("updateAddress - should reject nonexistent or deleted address")
+    void updateAddress_shouldRejectDeletedOrNonexistentAddress() {
+        AddressUpdateRequestDto request = new AddressUpdateRequestDto(
+                1L,
+                1L,
+                "Home",
+                "Test User",
+                "010-1234-5678",
+                "123 Gangnam Street",
+                "06000",
+                new BigDecimal("37.4979"),
+                new BigDecimal("127.0276")
+        );
 
-        assertThatThrownBy(() -> addressService.getAddressById(99L))
+        when(addressRepository.findByIdAndDeletedAtIsNull(99L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> addressService.updateAddress(99L, request))
                 .isInstanceOf(EntityNotFoundException.class);
+
+        verify(addressRepository, never()).save(any(Address.class));
     }
 
     // ── updateAddress ────────────────────────────────────────────────
@@ -206,17 +236,24 @@ class AddressServiceImplTest {
     @Test
     @DisplayName("updateAddress - should update successfully")
     void updateAddress_shouldUpdateSuccessfully() {
-        AddressRequestDto request = new AddressRequestDto(
-                1L, 1L, 1L,
-                "Work", "Updated User", "010-9999-9999",
-                "456 Updated Street", "06100",
-                new BigDecimal("37.5000"), new BigDecimal("127.0300")
+        AddressUpdateRequestDto request = new AddressUpdateRequestDto(
+                1L,
+                1L,
+                "Work",
+                "Updated User",
+                "010-9999-9999",
+                "456 Updated Street",
+                "06100",
+                new BigDecimal("37.5000"),
+                new BigDecimal("127.0300")
         );
 
-        when(addressRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(address));
-        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
-        when(cityRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(city));
-        when(deliveryAreaRepository.findByIdAndCityIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.of(deliveryArea));
+        when(addressRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(address));
+        when(cityRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(city));
+        when(deliveryAreaRepository.findByIdAndCityIdAndDeletedAtIsNull(1L, 1L))
+                .thenReturn(Optional.of(deliveryArea));
         when(addressRepository.save(address)).thenReturn(address);
 
         AddressResponseDto result = addressService.updateAddress(1L, request);
@@ -226,60 +263,33 @@ class AddressServiceImplTest {
         assertThat(result.label()).isEqualTo("Work");
         assertThat(result.recipientName()).isEqualTo("Updated User");
         assertThat(result.addressLine()).isEqualTo("456 Updated Street");
+
         verify(addressRepository).save(address);
-    }
-
-    @Test
-    @DisplayName("updateAddress - should reject deleted or nonexistent user")
-    void updateAddress_shouldRejectDeletedOrNonexistentUser() {
-        AddressRequestDto request = createRequest();
-
-        when(addressRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(address));
-        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> addressService.updateAddress(1L, request))
-                .isInstanceOf(EntityNotFoundException.class);
-        verify(addressRepository, never()).save(any(Address.class));
     }
 
     @Test
     @DisplayName("updateAddress - should reject deleted or nonexistent city")
     void updateAddress_shouldRejectDeletedOrNonexistentCity() {
-        AddressRequestDto request = createRequest();
+        AddressUpdateRequestDto request = new AddressUpdateRequestDto(
+                1L,
+                1L,
+                "Home",
+                "Test User",
+                "010-1234-5678",
+                "123 Gangnam Street",
+                "06000",
+                new BigDecimal("37.4979"),
+                new BigDecimal("127.0276")
+        );
 
-        when(addressRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(address));
-        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
-        when(cityRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> addressService.updateAddress(1L, request))
-                .isInstanceOf(EntityNotFoundException.class);
-        verify(addressRepository, never()).save(any(Address.class));
-    }
-
-    @Test
-    @DisplayName("updateAddress - should reject delivery area from different city")
-    void updateAddress_shouldRejectDeliveryAreaFromDifferentCity() {
-        AddressRequestDto request = createRequest();
-
-        when(addressRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(address));
-        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
-        when(cityRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(city));
-        when(deliveryAreaRepository.findByIdAndCityIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.empty());
+        when(addressRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(address));
+        when(cityRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> addressService.updateAddress(1L, request))
                 .isInstanceOf(EntityNotFoundException.class);
-        verify(addressRepository, never()).save(any(Address.class));
-    }
 
-    @Test
-    @DisplayName("updateAddress - should reject nonexistent or deleted address")
-    void updateAddress_shouldRejectDeletedOrNonexistentAddress() {
-        AddressRequestDto request = createRequest();
-
-        when(addressRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> addressService.updateAddress(99L, request))
-                .isInstanceOf(EntityNotFoundException.class);
         verify(addressRepository, never()).save(any(Address.class));
     }
 

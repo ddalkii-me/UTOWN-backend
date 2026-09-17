@@ -1,5 +1,6 @@
 package com.utown.utownbackend.service;
 
+import com.utown.utownbackend.dto.RestaurantOwnerUpdateRequestDto;
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.RestaurantResponseDto;
 import com.utown.utownbackend.dto.WorkingHoursDto;
@@ -52,6 +53,8 @@ class RestaurantServiceImplTest {
     private City city;
     private Restaurant restaurant;
     private RestaurantRequestDto requestDto;
+    private RestaurantOwnerUpdateRequestDto ownerUpdateRequestDto;
+
 
     @BeforeEach
     void setUp() {
@@ -59,6 +62,7 @@ class RestaurantServiceImplTest {
         type = TestDataFactory.createRestaurantType(1L, "Test Type");
         city = TestDataFactory.createCity(1L, "Test City");
         restaurant = TestDataFactory.createRestaurant(1L, "Test Restaurant", city, type, owner);
+
         restaurant.setDescription("Test description");
         restaurant.setAddress("Test address");
         restaurant.setPhone("01012345678");
@@ -68,12 +72,34 @@ class RestaurantServiceImplTest {
         restaurant.setMinimumOrderAmount(BigDecimal.valueOf(10000));
         restaurant.setStatus(RestaurantStatus.OPEN);
 
+        // Used for POST /api/restaurants
         requestDto = new RestaurantRequestDto(
                 1L, 1L, 1L,
-                "Test Restaurant", "Test description", "Test address",
-                "01012345678", "logo.png",
-                BigDecimal.valueOf(37), BigDecimal.valueOf(127),
-                BigDecimal.valueOf(10000), RestaurantStatus.OPEN
+                "Test Restaurant",
+                "Test description",
+                "Test address",
+                "01012345678",
+                "logo.png",
+                BigDecimal.valueOf(37),
+                BigDecimal.valueOf(127),
+                BigDecimal.valueOf(10000),
+                RestaurantStatus.OPEN
+        );
+
+        // Used for PUT /api/restaurants/{id} by RESTAURANT_OWNER
+        // Notice: there is NO ownerId here.
+        ownerUpdateRequestDto = new RestaurantOwnerUpdateRequestDto(
+                1L,  // typeId
+                1L,  // cityId
+                "Test Restaurant",
+                "Test description",
+                "Test address",
+                "01012345678",
+                "logo.png",
+                BigDecimal.valueOf(37),
+                BigDecimal.valueOf(127),
+                BigDecimal.valueOf(10000),
+                RestaurantStatus.OPEN
         );
     }
 
@@ -172,62 +198,75 @@ class RestaurantServiceImplTest {
     @Test
     @DisplayName("updateRestaurant - should update and return restaurant")
     void updateRestaurant_shouldUpdateAndReturnRestaurant() {
-        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(restaurantTypeRepository.findById(1L)).thenReturn(Optional.of(type));
-        when(cityRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(city));
-        when(restaurantRepository.save(any(Restaurant.class))).thenReturn(restaurant);
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
 
-        RestaurantResponseDto result = restaurantService.updateRestaurant(1L, requestDto);
+        when(restaurantTypeRepository.findById(1L))
+                .thenReturn(Optional.of(type));
+
+        when(cityRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(city));
+
+        when(restaurantRepository.save(any(Restaurant.class)))
+                .thenReturn(restaurant);
+
+        RestaurantResponseDto result =
+                restaurantService.updateRestaurant(1L, ownerUpdateRequestDto);
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("Test Restaurant");
+
         verify(restaurantRepository).save(restaurant);
     }
+
 
     @Test
     @DisplayName("updateRestaurant - should throw when restaurant not found")
     void updateRestaurant_restaurantNotFound_throwsNotFound() {
-        when(restaurantRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(99L))
+                .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> restaurantService.updateRestaurant(99L, requestDto))
+        assertThatThrownBy(() ->
+                restaurantService.updateRestaurant(99L, ownerUpdateRequestDto))
                 .isInstanceOf(EntityNotFoundException.class);
+
         verify(restaurantRepository, never()).save(any(Restaurant.class));
     }
+
 
     @Test
     @DisplayName("updateRestaurant - should throw when city is deleted")
     void updateRestaurant_deletedCity_throwsNotFound() {
-        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(restaurantTypeRepository.findById(1L)).thenReturn(Optional.of(type));
-        when(cityRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
 
-        assertThatThrownBy(() -> restaurantService.updateRestaurant(1L, requestDto))
+        when(restaurantTypeRepository.findById(1L))
+                .thenReturn(Optional.of(type));
+
+        when(cityRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                restaurantService.updateRestaurant(1L, ownerUpdateRequestDto))
                 .isInstanceOf(EntityNotFoundException.class);
+
         verify(restaurantRepository, never()).save(any(Restaurant.class));
     }
 
-    @Test
-    @DisplayName("updateRestaurant - should throw when owner not found")
-    void updateRestaurant_ownerNotFound_throwsNotFound() {
-        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> restaurantService.updateRestaurant(1L, requestDto))
-                .isInstanceOf(EntityNotFoundException.class);
-        verify(restaurantRepository, never()).save(any(Restaurant.class));
-    }
 
     @Test
     @DisplayName("updateRestaurant - should throw when restaurant type not found")
     void updateRestaurant_typeNotFound_throwsNotFound() {
-        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(restaurantTypeRepository.findById(1L)).thenReturn(Optional.empty());
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(restaurant));
 
-        assertThatThrownBy(() -> restaurantService.updateRestaurant(1L, requestDto))
+        when(restaurantTypeRepository.findById(1L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                restaurantService.updateRestaurant(1L, ownerUpdateRequestDto))
                 .isInstanceOf(EntityNotFoundException.class);
+
         verify(restaurantRepository, never()).save(any(Restaurant.class));
     }
 
