@@ -22,8 +22,12 @@ public class OrderSecurity {
 
         Long userId = principal.getId();
 
-        return orderRepository.findById(orderId)
-                .map(order -> order.getUser().getId().equals(userId))
+        return orderRepository.findWithUserAndRestaurantOwnerById(orderId)
+                .map(order ->
+                        order.getUser() != null
+                                && userId != null
+                                && userId.equals(order.getUser().getId())
+                )
                 .orElse(false);
     }
 
@@ -38,12 +42,14 @@ public class OrderSecurity {
 
         Long userId = principal.getId();
 
-        return orderRepository.findById(orderId)
+        return orderRepository.findWithUserAndRestaurantOwnerById(orderId)
                 .map(order ->
-                        order.getRestaurant()
-                                .getOwner()
-                                .getId()
-                                .equals(userId)
+                        order.getRestaurant() != null
+                                && order.getRestaurant().getOwner() != null
+                                && userId != null
+                                && userId.equals(
+                                order.getRestaurant().getOwner().getId()
+                        )
                 )
                 .orElse(false);
     }

@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,10 @@ public class DeliveryAssignmentController {
     private final DeliveryAssignmentService deliveryAssignmentService;
 
     @PostMapping
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @orderSecurity.isRestaurantOwner(authentication, #request.orderId())
+        """)
     public ResponseEntity<DeliveryAssignmentResponseDto> createAssignment(
             @Valid @RequestBody DeliveryAssignmentRequestDto request
     ) {
@@ -28,6 +33,11 @@ public class DeliveryAssignmentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @deliveryAssignmentSecurity.isRestaurantOwner(#id, authentication) or
+        @deliveryAssignmentSecurity.isRiderOwner(#id, authentication)
+        """)
     public ResponseEntity<DeliveryAssignmentResponseDto> getAssignmentById(
             @PathVariable Long id
     ) {
@@ -36,6 +46,7 @@ public class DeliveryAssignmentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<DeliveryAssignmentResponseDto>> getAssignments(
             @RequestParam(required = false) Long riderId,
             @RequestParam(required = false) Long orderId,
@@ -46,6 +57,10 @@ public class DeliveryAssignmentController {
     }
 
     @PatchMapping("/{id}/accept")
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @deliveryAssignmentSecurity.isRiderOwner(#id, authentication)
+        """)
     public ResponseEntity<DeliveryAssignmentResponseDto> acceptAssignment(
             @PathVariable Long id
     ) {
@@ -54,6 +69,10 @@ public class DeliveryAssignmentController {
     }
 
     @PatchMapping("/{id}/pickup")
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @deliveryAssignmentSecurity.isRiderOwner(#id, authentication)
+        """)
     public ResponseEntity<DeliveryAssignmentResponseDto> pickupDelivery(
             @PathVariable Long id
     ) {
@@ -62,6 +81,10 @@ public class DeliveryAssignmentController {
     }
 
     @PatchMapping("/{id}/deliver")
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @deliveryAssignmentSecurity.isRiderOwner(#id, authentication)
+        """)
     public ResponseEntity<DeliveryAssignmentResponseDto> completeDelivery(
             @PathVariable Long id
     ) {
@@ -70,6 +93,10 @@ public class DeliveryAssignmentController {
     }
 
     @PatchMapping("/{id}/cancel")
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @deliveryAssignmentSecurity.isRiderOwner(#id, authentication)
+        """)
     public ResponseEntity<DeliveryAssignmentResponseDto> cancelAssignment(
             @PathVariable Long id
     ) {
