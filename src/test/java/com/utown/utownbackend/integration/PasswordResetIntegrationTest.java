@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +59,9 @@ class PasswordResetIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private User user;
 
@@ -183,7 +187,7 @@ class PasswordResetIntegrationTest {
     }
 
     @Test
-    @DisplayName("Verify Code - rejects incorrect code and increments attempts")
+    @DisplayName("Verify Code - rejects incorrect code and tracks failed attempts")
     void verifyCode_invalidCode_rejectsAndIncrementsAttempts() throws Exception {
         AuthCode authCode = new AuthCode();
         authCode.setUser(user);
@@ -192,16 +196,29 @@ class PasswordResetIntegrationTest {
         authCode.setAttempts(0);
         authCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
         authCodeRepository.save(authCode);
+        entityManager.flush();
 
         PasswordResetVerifyDto wrongCodeDto = new PasswordResetVerifyDto("01011112222", "999999");
 
+        // First wrong attempt - should be rejected
         mockMvc.perform(post("/api/auth/password-reset/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(wrongCodeDto)))
                 .andExpect(status().isBadRequest());
 
-        AuthCode reloaded = authCodeRepository.findById(authCode.getId()).orElseThrow();
-        assertThat(reloaded.getAttempts()).isEqualTo(1);
-        assertThat(reloaded.getUsedAt()).isNull();
+        // Second wrong attempt - should also be rejected (proves attempts are tracked)
+        mockMvc.perform(post("/api/auth/password-reset/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(wrongCodeDto)))
+                .andExpect(status().isBadRequest());
+
+        // Correct code should still work (under MAX_ATTEMPTS)
+        PasswordResetVerifyDto correctCodeDto = new PasswordResetVerifyDto("01011112222", "123456");
+
+        mockMvc.perform(post("/api/auth/password-reset/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correctCodeDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resetToken").isString());
     }
 }

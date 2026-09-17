@@ -260,7 +260,7 @@ class PasswordResetServiceImplTest {
         }
 
         @Test
-        @DisplayName("Invalid code - increments attempts and throws IllegalArgumentException")
+        @DisplayName("Invalid code - increments attempts independently and throws IllegalArgumentException")
         void verifyPasswordReset_invalidCode_incrementsAttempts() {
             PasswordResetVerifyDto request = new PasswordResetVerifyDto("010-1234-5678", "999999");
 
@@ -276,9 +276,8 @@ class PasswordResetServiceImplTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Invalid verification code");
 
-            assertThat(authCode.getAttempts()).isEqualTo(3);
+            verify(authCodeRepository).incrementAttempts(10L);
             assertThat(authCode.getUsedAt()).isNull();
-            verify(authCodeRepository).save(authCode);
         }
     }
 

@@ -117,8 +117,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
 
         if (!passwordEncoder.matches(request.code(), authCode.getCodeHash())) {
-            authCode.setAttempts(authCode.getAttempts() + 1);
-            authCodeRepository.save(authCode);
+            authCodeRepository.incrementAttempts(authCode.getId());
             throw new IllegalArgumentException("Invalid verification code");
         }
 

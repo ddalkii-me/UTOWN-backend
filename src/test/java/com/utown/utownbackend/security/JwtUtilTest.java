@@ -149,4 +149,17 @@ class JwtUtilTest {
     void validatePasswordResetToken_malformedToken_returnsFalse() {
         assertThat(jwtUtil.validatePasswordResetToken("invalid.token.string")).isFalse();
     }
+
+    @Test
+    @DisplayName("Access token has no purpose claim - reset token has PASSWORD_RESET purpose claim")
+    void accessToken_noPurposeClaim_resetToken_hasPurposeClaim() {
+        String accessToken = jwtUtil.generateToken(userDetails);
+        String resetToken = jwtUtil.generatePasswordResetToken("+821012345678", 1L);
+
+        String accessPurpose = jwtUtil.extractClaim(accessToken, claims -> claims.get("purpose", String.class));
+        String resetPurpose = jwtUtil.extractClaim(resetToken, claims -> claims.get("purpose", String.class));
+
+        assertThat(accessPurpose).isNull();
+        assertThat(resetPurpose).isEqualTo("PASSWORD_RESET");
+    }
 }
