@@ -39,7 +39,7 @@ public class RiderProfileController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileById(
             @PathVariable Long id
     ) {
@@ -48,7 +48,7 @@ public class RiderProfileController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwnerByUserId(#userId, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('RIDER') and #userId == authentication.principal.id)")
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileByUserId(
             @PathVariable Long userId
     ) {
@@ -57,7 +57,7 @@ public class RiderProfileController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RiderProfileResponseDto> updateRiderProfile(
             @PathVariable Long id,
             @Valid @RequestBody RiderProfileUpdateRequestDto request
@@ -67,7 +67,7 @@ public class RiderProfileController {
     }
 
     @PatchMapping("/{id}/availability")
-    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(#id, authentication)")
+    @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RiderProfileResponseDto> updateAvailability(
             @PathVariable Long id,
             @Valid @RequestBody RiderAvailabilityUpdateRequestDto request

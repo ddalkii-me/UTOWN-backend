@@ -3,7 +3,10 @@ package com.utown.utownbackend.controller;
 import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.RiderStatus;
 import com.utown.utownbackend.entity.TransportType;
+import com.utown.utownbackend.entity.UserRole;
 import com.utown.utownbackend.exception.ResourceConflictException;
+import com.utown.utownbackend.security.CustomUserDetails;
+import com.utown.utownbackend.security.RiderProfileSecurity;
 import com.utown.utownbackend.service.RiderProfileService;
 import com.utown.utownbackend.util.TestDataFactory;
 import jakarta.persistence.EntityNotFoundException;
@@ -11,19 +14,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
-import com.utown.utownbackend.security.RiderProfileSecurity;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 import java.util.List;
 
@@ -58,6 +65,26 @@ class RiderProfileControllerTest {
     void setUp() {
         requestDto = TestDataFactory.createRiderProfileRequestDto(1L, TransportType.MOTORCYCLE);
         responseDto = TestDataFactory.createRiderProfileResponseDto(10L, 1L);
+    }
+
+    private void setAuthenticatedRider(Long userId) {
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(userDetails.getId()).thenReturn(userId);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        // ⭐ CHANGED:
+        // Give the Authentication token the ROLE_RIDER authority directly.
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_RIDER"))
+                );
+
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
     }
 
     @Test
@@ -163,7 +190,7 @@ class RiderProfileControllerTest {
     void getRiderProfileById_shouldReturn200() throws Exception {
         // NEW: Tell the mocked security helper that profile 10 belongs
         // to the currently authenticated rider.
-        when(riderProfileSecurity.isOwner(eq(10L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(10L)))
                 .thenReturn(true);
 
         when(riderProfileService.getRiderProfileById(10L))
@@ -181,7 +208,7 @@ class RiderProfileControllerTest {
     @DisplayName("GET /api/riders/{id} - rider cannot access another rider's profile")
     void getRiderProfileById_otherRider_shouldReturn403() throws Exception {
 
-        when(riderProfileSecurity.isOwner(eq(10L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(10L)))
                 .thenReturn(false);
 
         mockMvc.perform(get("/api/riders/{id}", 10L))
@@ -209,7 +236,7 @@ class RiderProfileControllerTest {
     @DisplayName("GET /api/riders/{id} - rider profile not found should return 404")
     void getRiderProfileById_notFound_shouldReturn404() throws Exception {
 
-        when(riderProfileSecurity.isOwner(eq(99L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(99L)))
                 .thenReturn(true);
 
         when(riderProfileService.getRiderProfileById(99L))
@@ -223,11 +250,10 @@ class RiderProfileControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "RIDER")
     @DisplayName("GET /api/riders/user/{userId} - rider can access own profile")
     void getRiderProfileByUserId_shouldReturn200() throws Exception {
-        when(riderProfileSecurity.isOwnerByUserId(eq(1L), any()))
-                .thenReturn(true);
+
+        setAuthenticatedRider(1L);
 
         when(riderProfileService.getRiderProfileByUserId(1L))
                 .thenReturn(responseDto);
@@ -240,12 +266,10 @@ class RiderProfileControllerTest {
     }
 
     @Test
-    // NEW
     @DisplayName("GET /api/riders/user/{userId} - rider cannot access another user's profile")
     void getRiderProfileByUserId_otherUser_shouldReturn403() throws Exception {
 
-        when(riderProfileSecurity.isOwnerByUserId(eq(2L), any()))
-                .thenReturn(false);
+        setAuthenticatedRider(1L);
 
         mockMvc.perform(get("/api/riders/user/{userId}", 2L))
                 .andExpect(status().isForbidden());
@@ -271,7 +295,7 @@ class RiderProfileControllerTest {
     @Test
     @DisplayName("PUT /api/riders/{id} - rider can update own profile")
     void updateRiderProfile_shouldReturn200() throws Exception {
-        when(riderProfileSecurity.isOwner(eq(10L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(10L)))
                 .thenReturn(true);
 
         RiderProfileUpdateRequestDto updateDto =
@@ -297,7 +321,7 @@ class RiderProfileControllerTest {
     @DisplayName("PUT /api/riders/{id} - rider cannot update another rider's profile")
     void updateRiderProfile_otherRider_shouldReturn403() throws Exception {
 
-        when(riderProfileSecurity.isOwner(eq(10L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(10L)))
                 .thenReturn(false);
 
         RiderProfileUpdateRequestDto updateDto =
@@ -337,7 +361,7 @@ class RiderProfileControllerTest {
     @Test
     @DisplayName("PATCH /api/riders/{id}/availability - rider can update own availability")
     void updateAvailability_shouldReturn200() throws Exception {
-        when(riderProfileSecurity.isOwner(eq(10L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(10L)))
                 .thenReturn(true);
 
         RiderAvailabilityUpdateRequestDto availDto =
@@ -363,7 +387,7 @@ class RiderProfileControllerTest {
     @DisplayName("PATCH /api/riders/{id}/availability - rider cannot update another rider's availability")
     void updateAvailability_otherRider_shouldReturn403() throws Exception {
 
-        when(riderProfileSecurity.isOwner(eq(10L), any()))
+        when(riderProfileSecurity.isOwner(any(), eq(10L)))
                 .thenReturn(false);
 
         RiderAvailabilityUpdateRequestDto availDto =

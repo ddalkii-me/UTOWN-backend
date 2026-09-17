@@ -1,18 +1,19 @@
 package com.utown.utownbackend.security;
 
+import com.utown.utownbackend.entity.RiderStatus;
 import com.utown.utownbackend.entity.UserRole;
 import com.utown.utownbackend.repository.RiderProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("riderProfileSecurity")
 @RequiredArgsConstructor
 public class RiderProfileSecurity {
 
     private final RiderProfileRepository riderProfileRepository;
 
-    public boolean isOwner(Long riderProfileId, Authentication authentication) {
+    public boolean isOwner(Authentication authentication, Long riderProfileId) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return false;
         }
@@ -33,23 +34,9 @@ public class RiderProfileSecurity {
 
         return riderProfileRepository.findByIdAndUserDeletedAtIsNull(riderProfileId)
                 .map(riderProfile -> riderProfile.getUser() != null
+                        && riderProfile.getStatus() == RiderStatus.ACTIVE
                         && userDetails.getId().equals(riderProfile.getUser().getId()))
                 .orElse(false);
     }
 
-    public boolean isOwnerByUserId(Long userId, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return false;
-        }
-
-        Object principal = authentication.getPrincipal();
-
-        if (!(principal instanceof CustomUserDetails userDetails)) {
-            return false;
-        }
-
-        return userDetails.getRole() == UserRole.RIDER
-                && userId != null
-                && userId.equals(userDetails.getId());
-    }
 }
