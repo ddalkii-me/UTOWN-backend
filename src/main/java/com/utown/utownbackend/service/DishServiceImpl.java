@@ -65,9 +65,24 @@ public class DishServiceImpl implements DishService {
 
     @Override
     public List<DishResponseDto> getDishes(DishStatus status, boolean deleted) {
+        return getDishes(null, null, status, deleted);
+    }
+
+    @Override
+    public List<DishResponseDto> getDishes(Long restaurantId, Long categoryId, DishStatus status, boolean deleted) {
         List<Dish> dishes;
         if (deleted) {
             dishes = dishRepository.findAllByDeletedAtIsNotNull();
+        } else if (restaurantId != null && categoryId != null && status != null) {
+            dishes = dishRepository.findAllByRestaurantIdAndCategoryIdAndStatusAndDeletedAtIsNullOrderBySortOrderAsc(restaurantId, categoryId, status);
+        } else if (restaurantId != null && categoryId != null) {
+            dishes = dishRepository.findAllByRestaurantIdAndCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(restaurantId, categoryId);
+        } else if (restaurantId != null && status != null) {
+            dishes = dishRepository.findAllByRestaurantIdAndStatusAndDeletedAtIsNullOrderBySortOrderAsc(restaurantId, status);
+        } else if (restaurantId != null) {
+            dishes = dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(restaurantId);
+        } else if (categoryId != null) {
+            dishes = dishRepository.findAllByCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(categoryId);
         } else if (status != null) {
             dishes = dishRepository.findAllByStatusAndDeletedAtIsNull(status);
         } else {

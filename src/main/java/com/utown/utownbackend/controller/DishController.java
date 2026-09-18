@@ -34,10 +34,12 @@ public class DishController {
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishResponseDto>> getDishes(
+            @RequestParam(required = false) Long restaurantId,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) DishStatus status,
             @RequestParam(required = false, defaultValue = "false") boolean deleted
     ) {
-        List<DishResponseDto> dishes = dishService.getDishes(status, deleted);
+        List<DishResponseDto> dishes = dishService.getDishes(restaurantId, categoryId, status, deleted);
         return ResponseEntity.ok(dishes);
     }
 

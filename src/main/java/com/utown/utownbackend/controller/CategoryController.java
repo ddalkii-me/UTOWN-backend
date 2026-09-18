@@ -32,10 +32,11 @@ public class CategoryController {
     }
     @GetMapping
     @PreAuthorize("permitAll()")
-    public ResponseEntity<List<CategoryResponseDto>> getAllCategories() {
+    public ResponseEntity<List<CategoryResponseDto>> getAllCategories(
+            @RequestParam(required = false) Long restaurantId) {
 
         List<CategoryResponseDto> categories =
-                categoryService.getAllCategories();
+                categoryService.getAllCategories(restaurantId);
 
         return ResponseEntity.ok(categories);
     }

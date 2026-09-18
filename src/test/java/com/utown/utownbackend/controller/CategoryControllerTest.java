@@ -88,11 +88,23 @@ class CategoryControllerTest {
     @Test
     @DisplayName("GET /api/categories - should return 200")
     void getAllCategories_shouldReturn200() throws Exception {
-        when(categoryService.getAllCategories()).thenReturn(List.of(responseDto));
+        when(categoryService.getAllCategories(null)).thenReturn(List.of(responseDto));
 
         mockMvc.perform(get("/api/categories"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1L));
+    }
+
+    @Test
+    @DisplayName("GET /api/categories?restaurantId=1 - should return 200 with filtered categories")
+    void getAllCategories_withRestaurantId_shouldReturnFiltered() throws Exception {
+        when(categoryService.getAllCategories(1L)).thenReturn(List.of(responseDto));
+
+        mockMvc.perform(get("/api/categories").param("restaurantId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1L));
+
+        verify(categoryService).getAllCategories(1L);
     }
 
     @Test

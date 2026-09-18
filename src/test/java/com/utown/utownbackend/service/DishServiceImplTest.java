@@ -154,6 +154,54 @@ class DishServiceImplTest {
         verify(dishRepository, never()).findAllByDeletedAtIsNull();
     }
 
+    @Test
+    @DisplayName("getDishes - with restaurantId filter should call restaurant repository query")
+    void getDishes_withRestaurantId_shouldFilterByRestaurant() {
+        when(dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(1L))
+                .thenReturn(List.of(dish));
+
+        List<DishResponseDto> result = dishService.getDishes(1L, null, null, false);
+
+        assertThat(result).hasSize(1);
+        verify(dishRepository).findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(1L);
+    }
+
+    @Test
+    @DisplayName("getDishes - with restaurantId and categoryId filter should call restaurant & category query")
+    void getDishes_withRestaurantIdAndCategoryId_shouldFilterByBoth() {
+        when(dishRepository.findAllByRestaurantIdAndCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(1L, 2L))
+                .thenReturn(List.of(dish));
+
+        List<DishResponseDto> result = dishService.getDishes(1L, 2L, null, false);
+
+        assertThat(result).hasSize(1);
+        verify(dishRepository).findAllByRestaurantIdAndCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(1L, 2L);
+    }
+
+    @Test
+    @DisplayName("getDishes - with restaurantId, categoryId, and status filter should call combined query")
+    void getDishes_withRestaurantIdCategoryIdAndStatus_shouldFilterAll() {
+        when(dishRepository.findAllByRestaurantIdAndCategoryIdAndStatusAndDeletedAtIsNullOrderBySortOrderAsc(1L, 2L, DishStatus.AVAILABLE))
+                .thenReturn(List.of(dish));
+
+        List<DishResponseDto> result = dishService.getDishes(1L, 2L, DishStatus.AVAILABLE, false);
+
+        assertThat(result).hasSize(1);
+        verify(dishRepository).findAllByRestaurantIdAndCategoryIdAndStatusAndDeletedAtIsNullOrderBySortOrderAsc(1L, 2L, DishStatus.AVAILABLE);
+    }
+
+    @Test
+    @DisplayName("getDishes - with categoryId only should call category query")
+    void getDishes_withCategoryIdOnly_shouldFilterByCategory() {
+        when(dishRepository.findAllByCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(2L))
+                .thenReturn(List.of(dish));
+
+        List<DishResponseDto> result = dishService.getDishes(null, 2L, null, false);
+
+        assertThat(result).hasSize(1);
+        verify(dishRepository).findAllByCategoryIdAndDeletedAtIsNullOrderBySortOrderAsc(2L);
+    }
+
     // ── getDishById ──────────────────────────────────────────────────
 
     @Test

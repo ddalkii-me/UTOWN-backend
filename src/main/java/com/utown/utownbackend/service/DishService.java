@@ -11,6 +11,8 @@ public interface DishService {
 
     List<DishResponseDto> getDishes(DishStatus status, boolean deleted);
 
+    List<DishResponseDto> getDishes(Long restaurantId, Long categoryId, DishStatus status, boolean deleted);
+
     DishResponseDto getDishById(Long id);
 
     DishResponseDto updateDish(Long id, DishRequestDto request);
