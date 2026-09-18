@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.NotificationRequestDto;
 import com.utown.utownbackend.dto.NotificationResponseDto;
 import com.utown.utownbackend.dto.UnreadNotificationCountDto;
 import com.utown.utownbackend.entity.NotificationType;
+import com.utown.utownbackend.entity.UserRole;
 import com.utown.utownbackend.service.NotificationService;
 import com.utown.utownbackend.util.TestDataFactory;
 import jakarta.persistence.EntityNotFoundException;
@@ -14,9 +15,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
+import com.utown.utownbackend.security.CustomUserDetails;
+import com.utown.utownbackend.security.NotificationSecurity;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -28,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(NotificationController.class)
+@Import(NotificationControllerTest.MethodSecurityTestConfig.class)
+@WithMockUser(roles = "CUSTOMER")
 class NotificationControllerTest {
 
     @Autowired
@@ -39,8 +55,12 @@ class NotificationControllerTest {
     @MockitoBean
     private NotificationService notificationService;
 
+    @MockitoBean
+    private NotificationSecurity notificationSecurity;
+
     private NotificationRequestDto requestDto;
     private NotificationResponseDto responseDto;
+
 
     @BeforeEach
     void setUp() {
@@ -48,10 +68,34 @@ class NotificationControllerTest {
         responseDto = TestDataFactory.createNotificationResponseDto(10L, 1L);
     }
 
+    private void setAuthenticatedCustomer(Long userId) {
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(userDetails.getId()).thenReturn(userId);
+        when(userDetails.getRole()).thenReturn(UserRole.CUSTOMER);
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))
+                );
+
+        SecurityContext context =
+                SecurityContextHolder.createEmptyContext();
+
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+    }
+
     @Test
-    @DisplayName("POST /api/notifications - should return 201 Created")
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("POST /api/notifications - admin can create notification")
     void createNotification_shouldReturn201() throws Exception {
-        when(notificationService.createNotification(any(NotificationRequestDto.class))).thenReturn(responseDto);
+
+        when(notificationService.createNotification(
+                any(NotificationRequestDto.class)
+        )).thenReturn(responseDto);
 
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -64,6 +108,19 @@ class NotificationControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/notifications - customer cannot create notification")
+    void createNotification_customer_shouldReturn403() throws Exception {
+
+        mockMvc.perform(post("/api/notifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/notifications - validation failure when title is blank")
     void createNotification_blankTitle_shouldReturn400() throws Exception {
         NotificationRequestDto invalid = new NotificationRequestDto(
@@ -78,8 +135,9 @@ class NotificationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/notifications?userId=1 - should return 200 OK with list")
+    @DisplayName("GET /api/notifications?userId=1 - customer can access own notifications")
     void getNotifications_queryParam_shouldReturn200() throws Exception {
+        setAuthenticatedCustomer(1L);
         when(notificationService.getNotificationsForUser(1L, null)).thenReturn(List.of(responseDto));
 
         mockMvc.perform(get("/api/notifications").param("userId", "1"))
@@ -89,8 +147,24 @@ class NotificationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/notifications?userId=1&isRead=false - should return 200 OK with filtered list")
+    @DisplayName("GET /api/notifications?userId=2 - customer cannot access another user's notifications")
+    void getNotifications_otherUser_shouldReturn403() throws Exception {
+
+        setAuthenticatedCustomer(1L);
+
+        mockMvc.perform(
+                        get("/api/notifications")
+                                .param("userId", "2")
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("GET /api/notifications?userId=1&isRead=false - customer can filter own notifications")
     void getNotifications_withIsReadFilter_shouldReturn200() throws Exception {
+        setAuthenticatedCustomer(1L);
         when(notificationService.getNotificationsForUser(1L, false)).thenReturn(List.of(responseDto));
 
         mockMvc.perform(get("/api/notifications").param("userId", "1").param("isRead", "false"))
@@ -110,6 +184,7 @@ class NotificationControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/notifications - missing userId should return 400 Bad Request")
     void createNotification_missingUserId_shouldReturn400() throws Exception {
         NotificationRequestDto invalid = new NotificationRequestDto(
@@ -124,6 +199,7 @@ class NotificationControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/notifications - missing type should return 400 Bad Request")
     void createNotification_missingType_shouldReturn400() throws Exception {
         NotificationRequestDto invalid = new NotificationRequestDto(
@@ -138,6 +214,7 @@ class NotificationControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/notifications - blank message should return 400 Bad Request")
     void createNotification_blankMessage_shouldReturn400() throws Exception {
         NotificationRequestDto invalid = new NotificationRequestDto(
@@ -152,6 +229,7 @@ class NotificationControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/notifications - message exceeding 255 chars should return 400 Bad Request")
     void createNotification_messageExceeds255_shouldReturn400() throws Exception {
         String longMessage = "a".repeat(256);
@@ -167,6 +245,7 @@ class NotificationControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("POST /api/notifications - title exceeding 255 chars should return 400 Bad Request")
     void createNotification_titleExceeds255_shouldReturn400() throws Exception {
         String longTitle = "a".repeat(256);
@@ -182,29 +261,66 @@ class NotificationControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/notifications/{id}?userId=1 - should return 200 OK when found")
+    @DisplayName("GET /api/notifications/{id}?userId=1 - customer can access own notification")
     void getNotificationById_shouldReturn200() throws Exception {
-        when(notificationService.getNotificationById(10L, 1L)).thenReturn(responseDto);
 
-        mockMvc.perform(get("/api/notifications/{id}", 10L).param("userId", "1"))
+        setAuthenticatedCustomer(1L);
+        when(notificationSecurity.isOwner(any(), eq(10L)))
+                .thenReturn(true);
+
+        when(notificationService.getNotificationById(10L, 1L))
+                .thenReturn(responseDto);
+
+        mockMvc.perform(
+                        get("/api/notifications/{id}", 10L)
+                                .param("userId", "1")
+                )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10L));
     }
 
     @Test
+    @DisplayName("GET /api/notifications/{id} - customer cannot access another user's notification")
+    void getNotificationById_otherUser_shouldReturn403() throws Exception {
+        setAuthenticatedCustomer(1L);
+
+        when(notificationSecurity.isOwner(any(), eq(10L)))
+                .thenReturn(false);
+
+        mockMvc.perform(
+                        get("/api/notifications/{id}", 10L)
+                                .param("userId", "1")
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
     @DisplayName("GET /api/notifications/{id}?userId=1 - should return 404 when not found")
     void getNotificationById_notFound_shouldReturn404() throws Exception {
-        when(notificationService.getNotificationById(99L, 1L))
-                .thenThrow(new EntityNotFoundException("Notification not found with id: 99"));
 
-        mockMvc.perform(get("/api/notifications/{id}", 99L).param("userId", "1"))
+        setAuthenticatedCustomer(1L);
+        when(notificationSecurity.isOwner(any(), eq(99L)))
+                .thenReturn(true);
+
+        when(notificationService.getNotificationById(99L, 1L))
+                .thenThrow(new EntityNotFoundException(
+                        "Notification not found with id: 99"
+                ));
+
+        mockMvc.perform(
+                        get("/api/notifications/{id}", 99L)
+                                .param("userId", "1")
+                )
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Resource Not Found"));
     }
 
     @Test
-    @DisplayName("GET /api/notifications/unread-count?userId=1 - should return 200 OK with count")
+    @DisplayName("GET /api/notifications/unread-count?userId=1 - customer can access own unread count")
     void getUnreadCount_shouldReturn200() throws Exception {
+        setAuthenticatedCustomer(1L);
         when(notificationService.getUnreadCount(1L)).thenReturn(new UnreadNotificationCountDto(3L));
 
         mockMvc.perform(get("/api/notifications/unread-count").param("userId", "1"))
@@ -213,18 +329,60 @@ class NotificationControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /api/notifications/{id}/read?userId=1 - should return 200 OK")
-    void markAsRead_shouldReturn200() throws Exception {
-        when(notificationService.markAsRead(10L, 1L)).thenReturn(responseDto);
+    @DisplayName("GET /api/notifications/unread-count?userId=2 - customer cannot access another user's unread count")
+    void getUnreadCount_otherUser_shouldReturn403() throws Exception {
 
-        mockMvc.perform(patch("/api/notifications/{id}/read", 10L).param("userId", "1"))
+        setAuthenticatedCustomer(1L);
+
+        mockMvc.perform(
+                        get("/api/notifications/unread-count")
+                                .param("userId", "2")
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("PATCH /api/notifications/{id}/read?userId=1 - customer can mark own notification as read")
+    void markAsRead_shouldReturn200() throws Exception {
+        setAuthenticatedCustomer(1L);
+
+        when(notificationSecurity.isOwner(any(), eq(10L)))
+                .thenReturn(true);
+
+        when(notificationService.markAsRead(10L, 1L))
+                .thenReturn(responseDto);
+
+        mockMvc.perform(
+                        patch("/api/notifications/{id}/read", 10L)
+                                .param("userId", "1")
+                )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(10L));
     }
 
     @Test
-    @DisplayName("PATCH /api/notifications/read-all?userId=1 - should return 204 No Content")
+    @DisplayName("PATCH /api/notifications/{id}/read - customer cannot mark another user's notification as read")
+    void markAsRead_otherUser_shouldReturn403() throws Exception {
+        setAuthenticatedCustomer(1L);
+
+        when(notificationSecurity.isOwner(any(), eq(10L)))
+                .thenReturn(false);
+
+        mockMvc.perform(
+                        patch("/api/notifications/{id}/read", 10L)
+                                .param("userId", "1")
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("PATCH /api/notifications/read-all?userId=1 - customer can mark own notifications as read")
     void markAllAsRead_shouldReturn204() throws Exception {
+        setAuthenticatedCustomer(1L);
         doNothing().when(notificationService).markAllAsRead(1L);
 
         mockMvc.perform(patch("/api/notifications/read-all").param("userId", "1"))
@@ -234,13 +392,68 @@ class NotificationControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/notifications/{id}?userId=1 - should return 204 No Content")
-    void deleteNotification_shouldReturn204() throws Exception {
-        doNothing().when(notificationService).deleteNotification(10L, 1L);
+    @DisplayName("PATCH /api/notifications/read-all?userId=2 - customer cannot mark another user's notifications as read")
+    void markAllAsRead_otherUser_shouldReturn403() throws Exception {
 
-        mockMvc.perform(delete("/api/notifications/{id}", 10L).param("userId", "1"))
+        setAuthenticatedCustomer(1L);
+
+        mockMvc.perform(
+                        patch("/api/notifications/read-all")
+                                .param("userId", "2")
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/notifications/{id}?userId=1 - customer can delete own notification")
+    void deleteNotification_shouldReturn204() throws Exception {
+        setAuthenticatedCustomer(1L);
+
+        when(notificationSecurity.isOwner(any(), eq(10L)))
+                .thenReturn(true);
+
+        doNothing()
+                .when(notificationService)
+                .deleteNotification(10L, 1L);
+
+        mockMvc.perform(
+                        delete("/api/notifications/{id}", 10L)
+                                .param("userId", "1")
+                )
                 .andExpect(status().isNoContent());
 
-        verify(notificationService).deleteNotification(10L, 1L);
+        verify(notificationService)
+                .deleteNotification(10L, 1L);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/notifications/{id} - customer cannot delete another user's notification")
+    void deleteNotification_otherUser_shouldReturn403() throws Exception {
+
+        setAuthenticatedCustomer(1L);
+
+        when(notificationSecurity.isOwner(any(), eq(10L)))
+                .thenReturn(false);
+
+        mockMvc.perform(
+                        delete("/api/notifications/{id}", 10L)
+                                .param("userId", "1")
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig {
+
+        @Bean
+        @Primary
+        NotificationSecurity notificationSecurity() {
+            return mock(NotificationSecurity.class);
+        }
     }
 }

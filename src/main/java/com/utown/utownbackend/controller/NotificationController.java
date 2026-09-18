@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NotificationResponseDto> createNotification(
             @Valid @RequestBody NotificationRequestDto request
     ) {
@@ -28,6 +30,11 @@ public class NotificationController {
     }
 
     @GetMapping
+    @PreAuthorize("""
+            hasRole('ADMIN') or
+            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            and #userId == authentication.principal.id)
+            """)
     public ResponseEntity<List<NotificationResponseDto>> getNotifications(
             @RequestParam Long userId,
             @RequestParam(required = false) Boolean isRead
@@ -37,6 +44,12 @@ public class NotificationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("""
+            hasRole('ADMIN') or
+            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            and #userId == authentication.principal.id
+            and @notificationSecurity.isOwner(authentication, #id))
+            """)
     public ResponseEntity<NotificationResponseDto> getNotificationById(
             @PathVariable Long id,
             @RequestParam Long userId
@@ -46,6 +59,11 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
+    @PreAuthorize("""
+            hasRole('ADMIN') or
+            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            and #userId == authentication.principal.id)
+            """)
     public ResponseEntity<UnreadNotificationCountDto> getUnreadCount(
             @RequestParam Long userId
     ) {
@@ -54,6 +72,12 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
+    @PreAuthorize("""
+            hasRole('ADMIN') or
+            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            and #userId == authentication.principal.id
+            and @notificationSecurity.isOwner(authentication, #id))
+            """)
     public ResponseEntity<NotificationResponseDto> markAsRead(
             @PathVariable Long id,
             @RequestParam Long userId
@@ -63,6 +87,11 @@ public class NotificationController {
     }
 
     @PatchMapping("/read-all")
+    @PreAuthorize("""
+            hasRole('ADMIN') or
+            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            and #userId == authentication.principal.id)
+            """)
     public ResponseEntity<Void> markAllAsRead(
             @RequestParam Long userId
     ) {
@@ -71,6 +100,12 @@ public class NotificationController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("""
+            hasRole('ADMIN') or
+            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            and #userId == authentication.principal.id
+            and @notificationSecurity.isOwner(authentication, #id))
+            """)
     public ResponseEntity<Void> deleteNotification(
             @PathVariable Long id,
             @RequestParam Long userId
