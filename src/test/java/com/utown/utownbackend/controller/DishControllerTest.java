@@ -90,11 +90,28 @@ class DishControllerTest {
     @Test
     @DisplayName("GET /api/dishes - should return 200")
     void getDishes_shouldReturn200() throws Exception {
-        when(dishService.getDishes(any(), anyBoolean())).thenReturn(List.of(responseDto));
+        when(dishService.getDishes(any(), any(), any(), anyBoolean())).thenReturn(List.of(responseDto));
 
         mockMvc.perform(get("/api/dishes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1L));
+    }
+
+    @Test
+    @DisplayName("GET /api/dishes with query parameters - should return 200 with filtered dishes")
+    void getDishes_withFilterParams_shouldReturnFilteredDishes() throws Exception {
+        when(dishService.getDishes(eq(1L), eq(2L), eq(DishStatus.AVAILABLE), eq(false)))
+                .thenReturn(List.of(responseDto));
+
+        mockMvc.perform(get("/api/dishes")
+                        .param("restaurantId", "1")
+                        .param("categoryId", "2")
+                        .param("status", "AVAILABLE")
+                        .param("deleted", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1L));
+
+        verify(dishService).getDishes(eq(1L), eq(2L), eq(DishStatus.AVAILABLE), eq(false));
     }
 
     @Test

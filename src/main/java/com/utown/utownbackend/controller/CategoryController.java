@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -19,6 +20,9 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @PostMapping
+    @PreAuthorize(
+            "hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #request.restaurantId())"
+    )
     public ResponseEntity<CategoryResponseDto> createCategory(
             @Valid @RequestBody CategoryRequestDto request) {
 
@@ -27,14 +31,17 @@ public class CategoryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     @GetMapping
-    public ResponseEntity<List<CategoryResponseDto>> getAllCategories() {
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<List<CategoryResponseDto>> getAllCategories(
+            @RequestParam(required = false) Long restaurantId) {
 
         List<CategoryResponseDto> categories =
-                categoryService.getAllCategories();
+                categoryService.getAllCategories(restaurantId);
 
         return ResponseEntity.ok(categories);
     }
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<CategoryResponseDto> getCategoryById(
             @PathVariable Long id) {
 
@@ -44,6 +51,9 @@ public class CategoryController {
         return ResponseEntity.ok(response);
     }
     @PutMapping("/{id}")
+    @PreAuthorize(
+            "hasRole('ADMIN') or @categorySecurity.isOwner(authentication, #id)"
+    )
     public ResponseEntity<CategoryResponseDto> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody CategoryRequestDto request) {
@@ -54,6 +64,9 @@ public class CategoryController {
         return ResponseEntity.ok(response);
     }
     @DeleteMapping("/{id}")
+    @PreAuthorize(
+            "hasRole('ADMIN') or @categorySecurity.isOwner(authentication, #id)"
+    )
     public ResponseEntity<Void> deleteCategory(
             @PathVariable Long id) {
 

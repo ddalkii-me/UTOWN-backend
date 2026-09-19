@@ -1,5 +1,6 @@
 package com.utown.utownbackend.controller;
 
+import com.utown.utownbackend.dto.RestaurantOwnerUpdateRequestDto;
 import tools.jackson.databind.ObjectMapper;
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.RestaurantResponseDto;
@@ -43,15 +44,41 @@ class RestaurantControllerTest {
     @MockitoBean
     private RestaurantService restaurantService;
 
+    @MockitoBean
+    private com.utown.utownbackend.service.MenuService menuService;
+
     private RestaurantRequestDto requestDto;
+    private RestaurantOwnerUpdateRequestDto ownerUpdateRequestDto;
     private RestaurantResponseDto responseDto;
     private WorkingHoursDto workingHoursDto;
 
     @BeforeEach
     void setUp() {
-        requestDto = TestDataFactory.createRestaurantRequestDto(1L, 1L, 1L, "KFC");
-        responseDto = TestDataFactory.createRestaurantResponseDto(1L, 1L, 1L, 1L, "KFC");
-        workingHoursDto = TestDataFactory.createWorkingHoursDto(DayOfWeek.MONDAY);
+        requestDto = TestDataFactory.createRestaurantRequestDto(
+                1L, 1L, 1L, "KFC"
+        );
+
+        ownerUpdateRequestDto = new RestaurantOwnerUpdateRequestDto(
+                1L,
+                1L,
+                "KFC",
+                "Updated description",
+                "Updated address",
+                "010-1234-5678",
+                null,
+                BigDecimal.valueOf(36.6357),
+                BigDecimal.valueOf(127.4917),
+                BigDecimal.valueOf(10000),
+                RestaurantStatus.OPEN
+        );
+
+        responseDto = TestDataFactory.createRestaurantResponseDto(
+                1L, 1L, 1L, 1L, "KFC"
+        );
+
+        workingHoursDto = TestDataFactory.createWorkingHoursDto(
+                DayOfWeek.MONDAY
+        );
     }
 
     @Test
@@ -123,6 +150,61 @@ class RestaurantControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/restaurants/{id}/menu - should return 200 with full menu hierarchy")
+    void getRestaurantMenu_shouldReturn200() throws Exception {
+        var menuDto = new com.utown.utownbackend.dto.RestaurantMenuResponseDto(
+                1L,
+                "KFC",
+                RestaurantStatus.OPEN,
+                new BigDecimal("15000"),
+                List.of(
+                        new com.utown.utownbackend.dto.MenuCategoryDto(
+                                10L,
+                                "Chicken",
+                                "Crispy",
+                                "url",
+                                1,
+                                List.of(
+                                        new com.utown.utownbackend.dto.MenuDishDto(
+                                                100L,
+                                                "Hot Wings",
+                                                "Spicy wings",
+                                                new BigDecimal("8000"),
+                                                "url",
+                                                com.utown.utownbackend.entity.DishStatus.AVAILABLE,
+                                                1,
+                                                List.of()
+                                        )
+                                )
+                        )
+                )
+        );
+
+        when(menuService.getRestaurantMenu(1L)).thenReturn(menuDto);
+
+        mockMvc.perform(get("/api/restaurants/{id}/menu", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.restaurantId").value(1L))
+                .andExpect(jsonPath("$.restaurantName").value("KFC"))
+                .andExpect(jsonPath("$.restaurantStatus").value("OPEN"))
+                .andExpect(jsonPath("$.categories[0].id").value(10L))
+                .andExpect(jsonPath("$.categories[0].name").value("Chicken"))
+                .andExpect(jsonPath("$.categories[0].dishes[0].id").value(100L))
+                .andExpect(jsonPath("$.categories[0].dishes[0].name").value("Hot Wings"));
+    }
+
+    @Test
+    @DisplayName("GET /api/restaurants/{id}/menu - should return 404 when restaurant not found")
+    void getRestaurantMenu_shouldReturn404WhenNotFound() throws Exception {
+        when(menuService.getRestaurantMenu(99L))
+                .thenThrow(new EntityNotFoundException("Restaurant not found"));
+
+        mockMvc.perform(get("/api/restaurants/{id}/menu", 99L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Resource Not Found"));
+    }
+
+    @Test
     @DisplayName("GET /api/restaurants/{id}/working-hours - should return 200")
     void getWorkingHoursById_shouldReturn200() throws Exception {
         when(restaurantService.getWorkingHours(1L)).thenReturn(List.of(workingHoursDto));
@@ -157,11 +239,14 @@ class RestaurantControllerTest {
     @Test
     @DisplayName("PUT /api/restaurants/{id} - should return 200")
     void updateRestaurant_shouldReturn200() throws Exception {
-        when(restaurantService.updateRestaurant(eq(1L), any(RestaurantRequestDto.class))).thenReturn(responseDto);
+        when(restaurantService.updateRestaurant(
+                eq(1L),
+                any(RestaurantOwnerUpdateRequestDto.class)
+        )).thenReturn(responseDto);
 
         mockMvc.perform(put("/api/restaurants/{id}", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                        .content(objectMapper.writeValueAsString(ownerUpdateRequestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L));
     }
@@ -169,12 +254,15 @@ class RestaurantControllerTest {
     @Test
     @DisplayName("PUT /api/restaurants/{id} - should return 404 when not found")
     void updateRestaurant_shouldReturn404WhenNotFound() throws Exception {
-        when(restaurantService.updateRestaurant(eq(99L), any(RestaurantRequestDto.class)))
+        when(restaurantService.updateRestaurant(
+                eq(99L),
+                any(RestaurantOwnerUpdateRequestDto.class)
+        ))
                 .thenThrow(new EntityNotFoundException("Restaurant not found"));
 
         mockMvc.perform(put("/api/restaurants/{id}", 99L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestDto)))
+                        .content(objectMapper.writeValueAsString(ownerUpdateRequestDto)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Resource Not Found"));
     }

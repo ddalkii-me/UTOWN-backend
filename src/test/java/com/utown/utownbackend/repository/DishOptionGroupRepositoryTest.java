@@ -166,4 +166,21 @@ class DishOptionGroupRepositoryTest {
         assertThat(activeResult.get().getName()).isEqualTo("Active");
         assertThat(deletedResult).isEmpty();
     }
+
+    @Test
+    @DisplayName("findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc - returns groups for multiple dishes ordered by sortOrder")
+    void findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc_success() {
+        DishOptionGroup g1 = createGroup("Dish1 - Group 1", dish1, 1, null);
+        DishOptionGroup g2 = createGroup("Dish1 - Group 2", dish1, 3, null);
+        DishOptionGroup g3 = createGroup("Dish2 - Group 1", dish2, 2, null);
+        createGroup("Dish1 - Deleted Group", dish1, 0, LocalDateTime.now());
+
+        List<DishOptionGroup> result = dishOptionGroupRepository
+                .findAllByDishIdInAndDeletedAtIsNullOrderBySortOrderAsc(List.of(dish1.getId(), dish2.getId()));
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).getName()).isEqualTo("Dish1 - Group 1");
+        assertThat(result.get(1).getName()).isEqualTo("Dish2 - Group 1");
+        assertThat(result.get(2).getName()).isEqualTo("Dish1 - Group 2");
+    }
 }

@@ -1,0 +1,21 @@
+ALTER TABLE orders
+    MODIFY COLUMN status ENUM(
+    'ACCEPTED',
+    'COMPLETED',
+    'DECLINED',
+    'DELIVERED',
+    'IN_PREPARATION',
+    'PENDING',
+    'READY_FOR_PICKUP'
+    ) NOT NULL;
+
+ALTER TABLE order_status_history
+    MODIFY COLUMN status ENUM(
+    'ACCEPTED',
+    'COMPLETED',
+    'DECLINED',
+    'DELIVERED',
+    'IN_PREPARATION',
+    'PENDING',
+    'READY_FOR_PICKUP'
+    ) NOT NULL;

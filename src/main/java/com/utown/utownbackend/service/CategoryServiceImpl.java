@@ -53,8 +53,17 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryResponseDto> getAllCategories() {
+        return getAllCategories(null);
+    }
 
-        List<Category> categories = categoryRepository.findAllByDeletedAtIsNull();
+    @Override
+    public List<CategoryResponseDto> getAllCategories(Long restaurantId) {
+        List<Category> categories;
+        if (restaurantId != null) {
+            categories = categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(restaurantId);
+        } else {
+            categories = categoryRepository.findAllByDeletedAtIsNull();
+        }
 
         return categories.stream()
                 .map(category -> new CategoryResponseDto(

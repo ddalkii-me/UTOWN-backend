@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class RestaurantTypeController {
     private final RestaurantTypeService restaurantTypeService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantTypeResponseDto> createRestaurantType(
             @Valid @RequestBody RestaurantTypeRequestDto request) {
 
@@ -29,6 +31,7 @@ public class RestaurantTypeController {
     }
 
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<RestaurantTypeResponseDto>> getAllRestaurantTypes() {
 
         List<RestaurantTypeResponseDto> restaurantTypes =
@@ -38,6 +41,7 @@ public class RestaurantTypeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantTypeResponseDto> getRestaurantTypeById(
             @PathVariable Long id) {
 
@@ -48,6 +52,7 @@ public class RestaurantTypeController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantTypeResponseDto> updateRestaurantType(
             @PathVariable Long id,
             @Valid @RequestBody RestaurantTypeRequestDto request) {
@@ -59,6 +64,7 @@ public class RestaurantTypeController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRestaurantType(
             @PathVariable Long id) {
 

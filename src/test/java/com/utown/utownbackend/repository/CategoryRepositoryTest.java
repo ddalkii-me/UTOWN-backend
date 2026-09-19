@@ -97,4 +97,37 @@ class CategoryRepositoryTest {
         assertThat(foundActive.get().getName()).isEqualTo("Desserts");
         assertThat(foundDeleted).isEmpty();
     }
+
+    @Test
+    @DisplayName("findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc - returns ordered categories for specific restaurant, excluding soft-deleted and other restaurants")
+    void findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc_success() {
+        // Categories for restaurant
+        createCategory("Drinks", 3, null);
+        createCategory("Appetizers", 1, null);
+        createCategory("Mains", 2, null);
+        createCategory("Old Category", 0, LocalDateTime.now());
+
+        // Category for another restaurant
+        Restaurant otherRestaurant = new Restaurant();
+        otherRestaurant.setName("Other Place");
+        otherRestaurant.setCity(restaurant.getCity());
+        otherRestaurant.setType(restaurant.getType());
+        otherRestaurant.setOwner(restaurant.getOwner());
+        otherRestaurant.setStatus(RestaurantStatus.OPEN);
+        entityManager.persist(otherRestaurant);
+
+        Category otherCat = new Category();
+        otherCat.setName("Other Food");
+        otherCat.setRestaurant(otherRestaurant);
+        otherCat.setPriority(1);
+        entityManager.persist(otherCat);
+        entityManager.flush();
+
+        List<Category> result = categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(restaurant.getId());
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).getName()).isEqualTo("Appetizers");
+        assertThat(result.get(1).getName()).isEqualTo("Mains");
+        assertThat(result.get(2).getName()).isEqualTo("Drinks");
+    }
 }

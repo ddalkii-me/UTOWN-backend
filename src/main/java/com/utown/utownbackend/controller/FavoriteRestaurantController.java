@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.FavoriteRestaurantResponseDto;
 import com.utown.utownbackend.service.FavoriteRestaurantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +17,7 @@ public class FavoriteRestaurantController {
     private final FavoriteRestaurantService favoriteRestaurantService;
 
     @PostMapping("/{restaurantId}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<FavoriteRestaurantResponseDto> addFavorite(
             @PathVariable Long userId,
             @PathVariable Long restaurantId) {
@@ -27,6 +29,7 @@ public class FavoriteRestaurantController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<List<FavoriteRestaurantResponseDto>> getFavorites(
             @PathVariable Long userId) {
 
@@ -36,6 +39,7 @@ public class FavoriteRestaurantController {
     }
 
     @DeleteMapping("/{restaurantId}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<Void> removeFavorite(
             @PathVariable Long userId,
             @PathVariable Long restaurantId) {
