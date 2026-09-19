@@ -258,6 +258,33 @@ public class TestDataFactory {
         return new DishOptionResponseDto(id, optionGroupId, name, new BigDecimal("1500"), 1, DishOptionStatus.AVAILABLE, null);
     }
 
+    public static UserProfileResponseDto createUserProfileResponseDto(Long id) {
+        return new UserProfileResponseDto(
+                id,
+                "010" + String.format("%08d", id != null ? id : 0),
+                "Test User " + id,
+                "user" + id + "@example.com",
+                UserRole.CUSTOMER,
+                UserStatus.ACTIVE,
+                null,
+                null,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+    }
+
+    public static UserProfileUpdateRequestDto createUserProfileUpdateRequestDto(String name, String email) {
+        return new UserProfileUpdateRequestDto(name, email);
+    }
+
+    public static ChangePasswordRequestDto createChangePasswordRequestDto(String oldPass, String newPass, String confirmPass) {
+        return new ChangePasswordRequestDto(oldPass, newPass, confirmPass);
+    }
+
+    public static UserStatusUpdateRequestDto createUserStatusUpdateRequestDto(UserStatus status) {
+        return new UserStatusUpdateRequestDto(status);
+    }
+
     public static RiderProfile createRiderProfile(Long id, User user, TransportType transportType, Boolean availability, RiderStatus status) {
         RiderProfile rider = new RiderProfile();
         rider.setId(id);

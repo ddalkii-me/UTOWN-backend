@@ -61,7 +61,7 @@ class OrderSecurityTest {
     @Test
     @DisplayName("isCustomer - returns true when authenticated customer owns the order")
     void isCustomer_matchingCustomer_returnsTrue() {
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(order));
 
         assertThat(orderSecurity.isCustomer(customerAuth, 500L)).isTrue();
     }
@@ -69,7 +69,7 @@ class OrderSecurityTest {
     @Test
     @DisplayName("isCustomer - returns false when authenticated user is not the order owner")
     void isCustomer_differentCustomer_returnsFalse() {
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(order));
 
         assertThat(orderSecurity.isCustomer(ownerAuth, 500L)).isFalse();
     }
@@ -77,7 +77,7 @@ class OrderSecurityTest {
     @Test
     @DisplayName("isCustomer - returns false when order does not exist")
     void isCustomer_orderNotFound_returnsFalse() {
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findWithUserAndRestaurantOwnerById(999L)).thenReturn(Optional.empty());
 
         assertThat(orderSecurity.isCustomer(customerAuth, 999L)).isFalse();
     }
@@ -100,7 +100,7 @@ class OrderSecurityTest {
     @Test
     @DisplayName("isRestaurantOwner - returns true when authenticated owner owns the restaurant")
     void isRestaurantOwner_matchingOwner_returnsTrue() {
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(order));
 
         assertThat(orderSecurity.isRestaurantOwner(ownerAuth, 500L)).isTrue();
     }
@@ -108,7 +108,7 @@ class OrderSecurityTest {
     @Test
     @DisplayName("isRestaurantOwner - returns false when authenticated user is not the restaurant owner")
     void isRestaurantOwner_differentOwner_returnsFalse() {
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(order));
 
         assertThat(orderSecurity.isRestaurantOwner(customerAuth, 500L)).isFalse();
     }
@@ -117,7 +117,7 @@ class OrderSecurityTest {
     @DisplayName("isRestaurantOwner - returns false when restaurant has no owner")
     void isRestaurantOwner_noOwner_returnsFalse() {
         order.getRestaurant().setOwner(null);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(order));
 
         assertThat(orderSecurity.isRestaurantOwner(ownerAuth, 500L)).isFalse();
     }
@@ -125,7 +125,7 @@ class OrderSecurityTest {
     @Test
     @DisplayName("isRestaurantOwner - returns false when order does not exist")
     void isRestaurantOwner_orderNotFound_returnsFalse() {
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findWithUserAndRestaurantOwnerById(999L)).thenReturn(Optional.empty());
 
         assertThat(orderSecurity.isRestaurantOwner(ownerAuth, 999L)).isFalse();
     }
