@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Optional;
 
@@ -54,7 +55,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(authentication, 10L);
 
-        assertTrue(result);
+        assertThat(result).isTrue();
 
         verify(notificationRepository)
                 .findByIdAndUserId(10L, 1L);
@@ -72,7 +73,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(authentication, 10L);
 
-        assertFalse(result);
+        assertThat(result).isFalse();
 
         verify(notificationRepository)
                 .findByIdAndUserId(10L, 1L);
@@ -85,7 +86,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(null, 10L);
 
-        assertFalse(result);
+        assertThat(result).isFalse();
 
         verifyNoInteractions(notificationRepository);
     }
@@ -101,7 +102,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(authentication, 10L);
 
-        assertFalse(result);
+        assertThat(result).isFalse();
 
         verifyNoInteractions(notificationRepository);
     }
@@ -119,7 +120,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(authentication, 10L);
 
-        assertFalse(result);
+        assertThat(result).isFalse();
 
         verifyNoInteractions(notificationRepository);
     }
@@ -133,7 +134,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(authentication, 10L);
 
-        assertFalse(result);
+        assertThat(result).isFalse();
 
         verifyNoInteractions(notificationRepository);
     }
@@ -147,7 +148,7 @@ class NotificationSecurityTest {
         boolean result =
                 notificationSecurity.isOwner(authentication, null);
 
-        assertFalse(result);
+        assertThat(result).isFalse();
 
         verifyNoInteractions(notificationRepository);
     }
