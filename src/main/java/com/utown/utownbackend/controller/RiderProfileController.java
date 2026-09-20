@@ -48,7 +48,10 @@ public class RiderProfileController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('RIDER') and #userId == authentication.principal.id)")
+    @PreAuthorize("""
+        hasRole('ADMIN') or
+        @riderProfileSecurity.isOwnerByUserId(authentication, #userId)
+        """)
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileByUserId(
             @PathVariable Long userId
     ) {

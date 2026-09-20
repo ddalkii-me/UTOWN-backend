@@ -250,10 +250,13 @@ class RiderProfileControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/riders/user/{userId} - rider can access own profile")
+    @DisplayName("GET /api/riders/user/{userId} - active rider can access own profile")
     void getRiderProfileByUserId_shouldReturn200() throws Exception {
 
         setAuthenticatedRider(1L);
+
+        when(riderProfileSecurity.isOwnerByUserId(any(), eq(1L)))
+                .thenReturn(true);
 
         when(riderProfileService.getRiderProfileByUserId(1L))
                 .thenReturn(responseDto);
@@ -270,6 +273,9 @@ class RiderProfileControllerTest {
     void getRiderProfileByUserId_otherUser_shouldReturn403() throws Exception {
 
         setAuthenticatedRider(1L);
+
+        when(riderProfileSecurity.isOwnerByUserId(any(), eq(2L)))
+                .thenReturn(false);
 
         mockMvc.perform(get("/api/riders/user/{userId}", 2L))
                 .andExpect(status().isForbidden());
@@ -290,6 +296,21 @@ class RiderProfileControllerTest {
                 .andExpect(jsonPath("$.userId").value(1L));
 
         verify(riderProfileService).getRiderProfileByUserId(1L);
+    }
+
+    @Test
+    @DisplayName("GET /api/riders/user/{userId} - suspended rider cannot access own profile")
+    void getRiderProfileByUserId_suspendedRider_shouldReturn403() throws Exception {
+
+        setAuthenticatedRider(1L);
+
+        when(riderProfileSecurity.isOwnerByUserId(any(), eq(1L)))
+                .thenReturn(false);
+
+        mockMvc.perform(get("/api/riders/user/{userId}", 1L))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(riderProfileService);
     }
 
     @Test
@@ -496,4 +517,5 @@ class RiderProfileControllerTest {
             return mock(RiderProfileSecurity.class);
         }
     }
+
 }

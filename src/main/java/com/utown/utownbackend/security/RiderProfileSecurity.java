@@ -39,4 +39,32 @@ public class RiderProfileSecurity {
                 .orElse(false);
     }
 
+    public boolean isOwnerByUserId(Authentication authentication, Long userId) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (!(principal instanceof CustomUserDetails userDetails)) {
+            return false;
+        }
+
+        if (userDetails.getRole() != UserRole.RIDER) {
+            return false;
+        }
+
+        if (userId == null || userDetails.getId() == null) {
+            return false;
+        }
+
+        if (!userDetails.getId().equals(userId)) {
+            return false;
+        }
+
+        return riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(userId)
+                .map(riderProfile -> riderProfile.getStatus() == RiderStatus.ACTIVE)
+                .orElse(false);
+    }
+
 }

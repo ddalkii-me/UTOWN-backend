@@ -194,4 +194,157 @@ class RiderProfileSecurityTest {
         verifyNoInteractions(riderProfileRepository);
     }
 
+    @Test
+    void isOwnerByUserId_riderOwnActiveProfile_returnsTrue() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+        RiderProfile riderProfile = mock(RiderProfile.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(1L);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        when(riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(riderProfile));
+        when(riderProfile.getStatus()).thenReturn(RiderStatus.ACTIVE);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 1L);
+
+        assertTrue(result);
+
+        verify(riderProfileRepository)
+                .findByUserIdAndUserDeletedAtIsNull(1L);
+    }
+
+    @Test
+    void isOwnerByUserId_riderOwnSuspendedProfile_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+        RiderProfile riderProfile = mock(RiderProfile.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(1L);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        when(riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(1L))
+                .thenReturn(Optional.of(riderProfile));
+        when(riderProfile.getStatus()).thenReturn(RiderStatus.SUSPENDED);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 1L);
+
+        assertFalse(result);
+
+        verify(riderProfileRepository)
+                .findByUserIdAndUserDeletedAtIsNull(1L);
+    }
+
+    @Test
+    void isOwnerByUserId_riderOtherUser_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(1L);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 2L);
+
+        assertFalse(result);
+
+        verifyNoInteractions(riderProfileRepository);
+    }
+
+    @Test
+    void isOwnerByUserId_customer_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(1L);
+        when(userDetails.getRole()).thenReturn(UserRole.CUSTOMER);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 1L);
+
+        assertFalse(result);
+
+        verifyNoInteractions(riderProfileRepository);
+    }
+
+    @Test
+    void isOwnerByUserId_unauthenticated_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+
+        when(authentication.isAuthenticated()).thenReturn(false);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 1L);
+
+        assertFalse(result);
+
+        verifyNoInteractions(riderProfileRepository);
+    }
+
+    @Test
+    void isOwnerByUserId_nullUserId_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(1L);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, null);
+
+        assertFalse(result);
+
+        verifyNoInteractions(riderProfileRepository);
+    }
+
+    @Test
+    void isOwnerByUserId_nullAuthenticatedUserId_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(null);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 1L);
+
+        assertFalse(result);
+
+        verifyNoInteractions(riderProfileRepository);
+    }
+
+    @Test
+    void isOwnerByUserId_profileNotFound_returnsFalse() {
+        Authentication authentication = mock(Authentication.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getId()).thenReturn(1L);
+        when(userDetails.getRole()).thenReturn(UserRole.RIDER);
+
+        when(riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(1L))
+                .thenReturn(Optional.empty());
+
+        boolean result =
+                riderProfileSecurity.isOwnerByUserId(authentication, 1L);
+
+        assertFalse(result);
+    }
+
 }
