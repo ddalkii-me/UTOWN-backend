@@ -32,7 +32,7 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("""
             hasRole('ADMIN') or
-            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            (hasAnyRole('CUSTOMER', 'RESTAURANT_OWNER', 'RIDER')
             and #userId == authentication.principal.id)
             """)
     public ResponseEntity<List<NotificationResponseDto>> getNotifications(
@@ -46,22 +46,28 @@ public class NotificationController {
     @GetMapping("/{id}")
     @PreAuthorize("""
             hasRole('ADMIN') or
-            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
-            and #userId == authentication.principal.id
-            and @notificationSecurity.isOwner(authentication, #id))
+            (hasAnyRole('CUSTOMER', 'RESTAURANT_OWNER', 'RIDER')
+            and #userId == authentication.principal.id)
             """)
     public ResponseEntity<NotificationResponseDto> getNotificationById(
             @PathVariable Long id,
-            @RequestParam Long userId
+            @RequestParam(required = false) Long userId
     ) {
-        NotificationResponseDto response = notificationService.getNotificationById(id, userId);
+        NotificationResponseDto response;
+
+        if (userId == null) {
+            response = notificationService.getNotificationById(id);
+        } else {
+            response = notificationService.getNotificationById(id, userId);
+        }
+
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/unread-count")
     @PreAuthorize("""
             hasRole('ADMIN') or
-            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            (hasAnyRole('CUSTOMER', 'RESTAURANT_OWNER', 'RIDER')
             and #userId == authentication.principal.id)
             """)
     public ResponseEntity<UnreadNotificationCountDto> getUnreadCount(
@@ -74,22 +80,28 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     @PreAuthorize("""
             hasRole('ADMIN') or
-            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
-            and #userId == authentication.principal.id
-            and @notificationSecurity.isOwner(authentication, #id))
+            (hasAnyRole('CUSTOMER', 'RESTAURANT_OWNER', 'RIDER')
+            and #userId == authentication.principal.id)
             """)
     public ResponseEntity<NotificationResponseDto> markAsRead(
             @PathVariable Long id,
-            @RequestParam Long userId
+            @RequestParam(required = false) Long userId
     ) {
-        NotificationResponseDto response = notificationService.markAsRead(id, userId);
+        NotificationResponseDto response;
+
+        if (userId == null) {
+            response = notificationService.markAsRead(id);
+        } else {
+            response = notificationService.markAsRead(id, userId);
+        }
+
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/read-all")
     @PreAuthorize("""
             hasRole('ADMIN') or
-            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
+            (hasAnyRole('CUSTOMER', 'RESTAURANT_OWNER', 'RIDER')
             and #userId == authentication.principal.id)
             """)
     public ResponseEntity<Void> markAllAsRead(
@@ -102,15 +114,19 @@ public class NotificationController {
     @DeleteMapping("/{id}")
     @PreAuthorize("""
             hasRole('ADMIN') or
-            ((hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER') or hasRole('RIDER'))
-            and #userId == authentication.principal.id
-            and @notificationSecurity.isOwner(authentication, #id))
+            (hasAnyRole('CUSTOMER', 'RESTAURANT_OWNER', 'RIDER')
+            and #userId == authentication.principal.id)
             """)
     public ResponseEntity<Void> deleteNotification(
             @PathVariable Long id,
-            @RequestParam Long userId
+            @RequestParam(required = false) Long userId
     ) {
-        notificationService.deleteNotification(id, userId);
+        if (userId == null) {
+            notificationService.deleteNotification(id);
+        } else {
+            notificationService.deleteNotification(id, userId);
+        }
+
         return ResponseEntity.noContent().build();
     }
 }
