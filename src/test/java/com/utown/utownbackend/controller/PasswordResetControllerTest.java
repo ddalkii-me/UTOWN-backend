@@ -88,18 +88,19 @@ class PasswordResetControllerTest {
         }
 
         @Test
-        @DisplayName("Cooldown active - returns 400 Bad Request")
-        void request_cooldownActive_returnsBadRequest() throws Exception {
+        @DisplayName("Cooldown active - returns 200 OK with generic message to prevent account enumeration")
+        void request_cooldownActive_returnsOkWithGenericMessage() throws Exception {
             PasswordResetRequestDto request = new PasswordResetRequestDto("010-1234-5678");
+            PasswordResetRequestResponseDto response = new PasswordResetRequestResponseDto("If an account exists, a verification code has been sent", 60);
 
-            when(passwordResetService.requestPasswordReset(any()))
-                    .thenThrow(new IllegalStateException("A reset code was already sent recently. Please wait for the cooldown to expire."));
+            when(passwordResetService.requestPasswordReset(any())).thenReturn(response);
 
             mockMvc.perform(post("/api/auth/password-reset/request")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("cooldown")));
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("If an account exists, a verification code has been sent"))
+                    .andExpect(jsonPath("$.cooldownSeconds").value(60));
         }
 
         @Test
@@ -165,6 +166,21 @@ class PasswordResetControllerTest {
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.detail").value("Invalid verification code"));
+        }
+
+        @Test
+        @DisplayName("No active code or unknown user - returns 400 Bad Request to prevent account enumeration")
+        void verify_noActiveCode_returnsBadRequest() throws Exception {
+            PasswordResetVerifyDto request = new PasswordResetVerifyDto("010-1234-5678", "123456");
+
+            when(passwordResetService.verifyPasswordReset(any()))
+                    .thenThrow(new IllegalArgumentException("No active verification code found"));
+
+            mockMvc.perform(post("/api/auth/password-reset/verify")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.detail").value("No active verification code found"));
         }
     }
 

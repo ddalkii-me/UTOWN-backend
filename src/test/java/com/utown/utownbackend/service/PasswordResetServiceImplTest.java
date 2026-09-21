@@ -130,7 +130,7 @@ class PasswordResetServiceImplTest {
         }
 
         @Test
-        @DisplayName("Cooldown active (< 60s since last request) - throws IllegalStateException")
+        @DisplayName("Cooldown active (< 60s since last request) - returns generic 200 response to prevent enumeration")
         void requestPasswordReset_cooldownActive() {
             PasswordResetRequestDto request = new PasswordResetRequestDto("010-1234-5678");
 
@@ -141,11 +141,14 @@ class PasswordResetServiceImplTest {
             when(authCodeRepository.findTopByUserAndPurposeOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET))
                     .thenReturn(Optional.of(recentCode));
 
-            assertThatThrownBy(() -> passwordResetService.requestPasswordReset(request))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("cooldown");
+            PasswordResetRequestResponseDto response = passwordResetService.requestPasswordReset(request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.message()).isEqualTo("If an account exists, a verification code has been sent");
+            assertThat(response.cooldownSeconds()).isEqualTo(60);
 
             verify(authCodeRepository, never()).save(any());
+            verify(smsService, never()).sendVerificationCode(anyString(), anyString());
         }
 
         @Test
@@ -184,6 +187,7 @@ class PasswordResetServiceImplTest {
             when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.of(user));
             when(authCodeRepository.findTopByUserAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET))
                     .thenReturn(Optional.of(authCode));
+            when(authCodeRepository.incrementAttemptsIfUnderLimit(10L, 5)).thenReturn(1);
             when(passwordEncoder.matches("123456", "hashedCode")).thenReturn(true);
             when(jwtUtil.generatePasswordResetToken("+821012345678", 1L, 10L)).thenReturn("mocked.reset.token");
 
@@ -193,20 +197,21 @@ class PasswordResetServiceImplTest {
             assertThat(response.resetToken()).isEqualTo("mocked.reset.token");
             assertThat(response.expiresInSeconds()).isEqualTo(900);
 
+            verify(authCodeRepository).incrementAttemptsIfUnderLimit(10L, 5);
             assertThat(authCode.getUsedAt()).isNotNull();
             verify(authCodeRepository).save(authCode);
         }
 
         @Test
-        @DisplayName("User not found - throws EntityNotFoundException")
+        @DisplayName("User not found - throws IllegalArgumentException to prevent enumeration")
         void verifyPasswordReset_userNotFound() {
             PasswordResetVerifyDto request = new PasswordResetVerifyDto("010-1234-5678", "123456");
 
             when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> passwordResetService.verifyPasswordReset(request))
-                    .isInstanceOf(EntityNotFoundException.class)
-                    .hasMessageContaining("User not found");
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No active verification code found");
         }
 
         @Test
@@ -260,7 +265,27 @@ class PasswordResetServiceImplTest {
         }
 
         @Test
-        @DisplayName("Invalid code - increments attempts independently and throws IllegalArgumentException")
+        @DisplayName("Atomic attempt limit reached - throws IllegalArgumentException without evaluating encoder")
+        void verifyPasswordReset_atomicLimitReached_throwsIllegalArgumentException() {
+            PasswordResetVerifyDto request = new PasswordResetVerifyDto("010-1234-5678", "123456");
+
+            AuthCode authCode = TestDataFactory.createAuthCode(10L, user, "hashedCode", AuthCodePurpose.PASSWORD_RESET);
+            authCode.setAttempts(4);
+
+            when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.of(user));
+            when(authCodeRepository.findTopByUserAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET))
+                    .thenReturn(Optional.of(authCode));
+            when(authCodeRepository.incrementAttemptsIfUnderLimit(10L, 5)).thenReturn(0);
+
+            assertThatThrownBy(() -> passwordResetService.verifyPasswordReset(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Maximum verification attempts exceeded");
+
+            verify(passwordEncoder, never()).matches(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Invalid code - increments attempts under limit and throws IllegalArgumentException")
         void verifyPasswordReset_invalidCode_incrementsAttempts() {
             PasswordResetVerifyDto request = new PasswordResetVerifyDto("010-1234-5678", "999999");
 
@@ -270,13 +295,14 @@ class PasswordResetServiceImplTest {
             when(userRepository.findByPhoneAndDeletedAtIsNull("+821012345678")).thenReturn(Optional.of(user));
             when(authCodeRepository.findTopByUserAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET))
                     .thenReturn(Optional.of(authCode));
+            when(authCodeRepository.incrementAttemptsIfUnderLimit(10L, 5)).thenReturn(1);
             when(passwordEncoder.matches("999999", "hashedCode")).thenReturn(false);
 
             assertThatThrownBy(() -> passwordResetService.verifyPasswordReset(request))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Invalid verification code");
 
-            verify(authCodeRepository).incrementAttempts(10L);
+            verify(authCodeRepository).incrementAttemptsIfUnderLimit(10L, 5);
             assertThat(authCode.getUsedAt()).isNull();
         }
     }

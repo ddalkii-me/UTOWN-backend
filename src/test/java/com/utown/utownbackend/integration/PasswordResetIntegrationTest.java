@@ -14,6 +14,7 @@ import com.utown.utownbackend.repository.AuthCodeRepository;
 import com.utown.utownbackend.repository.RefreshTokenRepository;
 import com.utown.utownbackend.repository.UserRepository;
 import com.utown.utownbackend.service.RefreshTokenService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
@@ -36,7 +36,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional
 class PasswordResetIntegrationTest {
 
     @Autowired
@@ -67,6 +66,10 @@ class PasswordResetIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        refreshTokenRepository.deleteAll();
+        authCodeRepository.deleteAll();
+        userRepository.deleteAll();
+
         user = new User();
         user.setEmail("reset-test@example.com");
         user.setPhone("+821011112222");
@@ -78,6 +81,13 @@ class PasswordResetIntegrationTest {
 
         refreshTokenService.createRefreshToken(user.getId());
         assertThat(refreshTokenRepository.findByUser(user)).isPresent();
+    }
+
+    @AfterEach
+    void tearDown() {
+        refreshTokenRepository.deleteAll();
+        authCodeRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
@@ -165,25 +175,44 @@ class PasswordResetIntegrationTest {
                 .andExpect(jsonPath("$.cooldownSeconds").value(60));
 
         // Verify no AuthCode was created
-        assertThat(authCodeRepository.findAll()).noneMatch(ac -> "+821099998888".equals(ac.getUser().getPhone()));
+        assertThat(authCodeRepository.count()).isZero();
     }
 
     @Test
-    @DisplayName("Request Code - rejects when cooldown is active")
-    void requestCode_cooldownActive_rejects() throws Exception {
+    @DisplayName("Request Code - returns 200 OK on cooldown to prevent enumeration but creates no new code")
+    void requestCode_cooldownActive_returnsOkWithoutCreatingNewCode() throws Exception {
         PasswordResetRequestDto requestDto = new PasswordResetRequestDto("01011112222");
 
         // First request succeeds
         mockMvc.perform(post("/api/auth/password-reset/request")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("If an account exists, a verification code has been sent"))
+                .andExpect(jsonPath("$.cooldownSeconds").value(60));
 
-        // Immediate second request fails with 400 Bad Request
+        // Immediate second request also returns 200 OK with identical payload
         mockMvc.perform(post("/api/auth/password-reset/request")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("If an account exists, a verification code has been sent"))
+                .andExpect(jsonPath("$.cooldownSeconds").value(60));
+
+        // Verify only 1 AuthCode was created
+        assertThat(authCodeRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Verify Code - unknown phone returns 400 Bad Request to prevent account enumeration")
+    void verifyCode_unknownUser_returnsBadRequest() throws Exception {
+        PasswordResetVerifyDto verifyDto = new PasswordResetVerifyDto("01099998888", "123456");
+
+        mockMvc.perform(post("/api/auth/password-reset/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verifyDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("No active verification code found"));
     }
 
     @Test
@@ -196,7 +225,6 @@ class PasswordResetIntegrationTest {
         authCode.setAttempts(0);
         authCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
         authCodeRepository.save(authCode);
-        entityManager.flush();
 
         PasswordResetVerifyDto wrongCodeDto = new PasswordResetVerifyDto("01011112222", "999999");
 
@@ -220,5 +248,36 @@ class PasswordResetIntegrationTest {
                         .content(objectMapper.writeValueAsString(correctCodeDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resetToken").isString());
+    }
+
+    @Test
+    @DisplayName("Verify Code - locks out after MAX_ATTEMPTS reached")
+    void verifyCode_lockoutAfterMaxAttempts() throws Exception {
+        AuthCode authCode = new AuthCode();
+        authCode.setUser(user);
+        authCode.setCodeHash(passwordEncoder.encode("123456"));
+        authCode.setPurpose(AuthCodePurpose.PASSWORD_RESET);
+        authCode.setAttempts(0);
+        authCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+        authCodeRepository.save(authCode);
+
+        PasswordResetVerifyDto wrongCodeDto = new PasswordResetVerifyDto("01011112222", "999999");
+
+        // 5 failed attempts
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/auth/password-reset/verify")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(wrongCodeDto)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.detail").value("Invalid verification code"));
+        }
+
+        // 6th attempt (even with correct code) is locked out
+        PasswordResetVerifyDto correctCodeDto = new PasswordResetVerifyDto("01011112222", "123456");
+        mockMvc.perform(post("/api/auth/password-reset/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(correctCodeDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Maximum verification attempts exceeded"));
     }
 }

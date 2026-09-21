@@ -68,8 +68,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             if (latestCode.getCreatedAt() != null) {
                 long secondsSinceLastRequest = Duration.between(latestCode.getCreatedAt(), LocalDateTime.now()).getSeconds();
                 if (secondsSinceLastRequest < COOLDOWN_SECONDS) {
-                    long remaining = COOLDOWN_SECONDS - secondsSinceLastRequest;
-                    throw new IllegalStateException("A reset code was already sent recently. Please wait for the cooldown to expire (" + remaining + " seconds remaining).");
+                    log.info("Password reset requested within cooldown for phone: {}", normalizedPhone);
+                    return new PasswordResetRequestResponseDto("If an account exists, a verification code has been sent", COOLDOWN_SECONDS);
                 }
             }
         }
@@ -102,7 +102,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         }
 
         User user = userRepository.findByPhoneAndDeletedAtIsNull(normalizedPhone)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with phone: " + request.phone()));
+                .orElseThrow(() -> new IllegalArgumentException("No active verification code found"));
 
         AuthCode authCode = authCodeRepository
                 .findTopByUserAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(user, AuthCodePurpose.PASSWORD_RESET)
@@ -116,8 +116,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
             throw new IllegalArgumentException("Verification code has expired");
         }
 
+        int updated = authCodeRepository.incrementAttemptsIfUnderLimit(authCode.getId(), MAX_ATTEMPTS);
+        if (updated == 0) {
+            throw new IllegalArgumentException("Maximum verification attempts exceeded");
+        }
+
         if (!passwordEncoder.matches(request.code(), authCode.getCodeHash())) {
-            authCodeRepository.incrementAttempts(authCode.getId());
             throw new IllegalArgumentException("Invalid verification code");
         }
 
