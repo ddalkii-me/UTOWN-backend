@@ -14,11 +14,17 @@ public interface NotificationService {
 
     NotificationResponseDto getNotificationById(Long id, Long userId);
 
+    NotificationResponseDto getNotificationById(Long id);
+
     UnreadNotificationCountDto getUnreadCount(Long userId);
 
     NotificationResponseDto markAsRead(Long id, Long userId);
 
+    NotificationResponseDto markAsRead(Long id);
+
     void markAllAsRead(Long userId);
 
     void deleteNotification(Long id, Long userId);
+
+    void deleteNotification(Long id);
 }
