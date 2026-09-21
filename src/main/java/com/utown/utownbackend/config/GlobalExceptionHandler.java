@@ -76,19 +76,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
     }
 
-    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
-    public ResponseEntity<ProblemDetail> handleAuthorizationDenied(
-            org.springframework.security.access.AccessDeniedException ex) {
-
-        log.warn("Access denied: {}", ex.getMessage());
-
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-                HttpStatus.FORBIDDEN,
-                "You do not have permission to access this resource.");
-        problemDetail.setTitle("Forbidden");
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problemDetail);
-    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex) {

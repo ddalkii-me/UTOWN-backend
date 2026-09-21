@@ -88,6 +88,21 @@ class RestaurantRepositoryTest {
     }
 
     @Test
+    @DisplayName("findAllByDeletedAtIsNull - eagerly fetches owner, type, and city to eliminate N+1")
+    void findAllByDeletedAtIsNull_eagerlyFetchesAssociations() {
+        createRestaurant("Active 1", seoul, null);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Restaurant> result = restaurantRepository.findAllByDeletedAtIsNull();
+
+        assertThat(result).hasSize(1);
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getOwner())).isTrue();
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getType())).isTrue();
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getCity())).isTrue();
+    }
+
+    @Test
     @DisplayName("findByIdAndDeletedAtIsNull - returns restaurant if active, empty if deleted")
     void findByIdAndDeletedAtIsNull_success() {
         Restaurant active = createRestaurant("Seoul Bistro", seoul, null);

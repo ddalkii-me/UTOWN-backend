@@ -5,6 +5,7 @@ import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import com.utown.utownbackend.security.CustomUserDetails;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -220,6 +221,12 @@ public class OrderServiceImpl implements OrderService {
             Authentication authentication
     ) {
         Specification<Order> spec = (root, query, cb) -> {
+            if (query != null && Order.class.equals(query.getResultType())) {
+                root.fetch("user", JoinType.LEFT);
+                root.fetch("restaurant", JoinType.LEFT);
+                root.fetch("address", JoinType.LEFT);
+            }
+
             List<Predicate> predicates = new ArrayList<>();
 
             if (authentication == null
