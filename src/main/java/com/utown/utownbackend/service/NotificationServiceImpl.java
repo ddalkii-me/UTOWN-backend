@@ -59,10 +59,20 @@ public class NotificationServiceImpl implements NotificationService {
                 .toList();
     }
 
+    // Normal user — only their own notification
     @Override
     @Transactional(readOnly = true)
     public NotificationResponseDto getNotificationById(Long id, Long userId) {
         return notificationRepository.findByIdAndUserId(id, userId)
+                .map(this::mapToResponseDto)
+                .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
+    }
+
+    // Admin — any notification
+    @Override
+    @Transactional(readOnly = true)
+    public NotificationResponseDto getNotificationById(Long id) {
+        return notificationRepository.findById(id)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
     }
@@ -88,6 +98,18 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public NotificationResponseDto markAsRead(Long id) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
+
+        notification.setIsRead(true);
+        Notification saved = notificationRepository.save(notification);
+        log.info("Marked notification ID: {} as read by admin", id);
+
+        return mapToResponseDto(saved);
+    }
+
+    @Override
     public void markAllAsRead(Long userId) {
         validateUserExists(userId);
         int count = notificationRepository.markAllAsReadByUserId(userId);
@@ -101,6 +123,15 @@ public class NotificationServiceImpl implements NotificationService {
 
         notificationRepository.delete(notification);
         log.info("Deleted notification ID: {} for user ID: {}", id, userId);
+    }
+
+    @Override
+    public void deleteNotification(Long id) {
+        Notification notification = notificationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
+
+        notificationRepository.delete(notification);
+        log.info("Deleted notification ID: {} by admin", id);
     }
 
     private void validateUserExists(Long userId) {
