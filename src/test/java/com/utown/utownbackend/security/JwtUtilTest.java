@@ -94,4 +94,72 @@ class JwtUtilTest {
         String role = jwtUtil.extractClaim(token, claims -> claims.get("role", String.class));
         assertThat(role).isEqualTo("CUSTOMER");
     }
+
+    @Test
+    @DisplayName("generatePasswordResetToken - generates valid reset token and extracts phone and userId")
+    void generatePasswordResetToken_success() {
+        String resetToken = jwtUtil.generatePasswordResetToken("+821012345678", 1L);
+
+        assertThat(resetToken).isNotBlank();
+        assertThat(jwtUtil.validatePasswordResetToken(resetToken)).isTrue();
+        assertThat(jwtUtil.extractPasswordResetPhone(resetToken)).isEqualTo("+821012345678");
+        assertThat(jwtUtil.extractPasswordResetUserId(resetToken)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("generatePasswordResetToken with codeId - embeds and extracts codeId")
+    void generatePasswordResetToken_withCodeId_success() {
+        String resetToken = jwtUtil.generatePasswordResetToken("+821012345678", 1L, 42L);
+
+        assertThat(resetToken).isNotBlank();
+        assertThat(jwtUtil.validatePasswordResetToken(resetToken)).isTrue();
+        assertThat(jwtUtil.extractPasswordResetPhone(resetToken)).isEqualTo("+821012345678");
+        assertThat(jwtUtil.extractPasswordResetUserId(resetToken)).isEqualTo(1L);
+        assertThat(jwtUtil.extractPasswordResetCodeId(resetToken)).isEqualTo(42L);
+    }
+
+    @Test
+    @DisplayName("validatePasswordResetToken - returns false for expired reset token")
+    void validatePasswordResetToken_expiredToken_returnsFalse() {
+        JwtUtil expiredJwtUtil = new JwtUtil(TEST_SECRET, EXPIRATION_MS, -1000L);
+        String expiredToken = expiredJwtUtil.generatePasswordResetToken("+821012345678", 1L, 42L);
+
+        assertThat(expiredJwtUtil.validatePasswordResetToken(expiredToken)).isFalse();
+    }
+
+    @Test
+    @DisplayName("validatePasswordResetToken - returns false for tampered token")
+    void validatePasswordResetToken_tamperedToken_returnsFalse() {
+        String validToken = jwtUtil.generatePasswordResetToken("+821012345678", 1L, 42L);
+        String tamperedToken = validToken.substring(0, validToken.length() - 5) + "abcde";
+
+        assertThat(jwtUtil.validatePasswordResetToken(tamperedToken)).isFalse();
+    }
+
+    @Test
+    @DisplayName("validatePasswordResetToken - returns false for normal auth token (wrong purpose)")
+    void validatePasswordResetToken_wrongPurpose_returnsFalse() {
+        String normalToken = jwtUtil.generateToken(userDetails);
+
+        assertThat(jwtUtil.validatePasswordResetToken(normalToken)).isFalse();
+    }
+
+    @Test
+    @DisplayName("validatePasswordResetToken - returns false for malformed token")
+    void validatePasswordResetToken_malformedToken_returnsFalse() {
+        assertThat(jwtUtil.validatePasswordResetToken("invalid.token.string")).isFalse();
+    }
+
+    @Test
+    @DisplayName("Access token has no purpose claim - reset token has PASSWORD_RESET purpose claim")
+    void accessToken_noPurposeClaim_resetToken_hasPurposeClaim() {
+        String accessToken = jwtUtil.generateToken(userDetails);
+        String resetToken = jwtUtil.generatePasswordResetToken("+821012345678", 1L);
+
+        String accessPurpose = jwtUtil.extractClaim(accessToken, claims -> claims.get("purpose", String.class));
+        String resetPurpose = jwtUtil.extractClaim(resetToken, claims -> claims.get("purpose", String.class));
+
+        assertThat(accessPurpose).isNull();
+        assertThat(resetPurpose).isEqualTo("PASSWORD_RESET");
+    }
 }
