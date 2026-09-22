@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/restaurants")
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class RestaurantDeliveryAreaController {
     public ResponseEntity<RestaurantDeliveryAreaResponseDto> addDeliveryArea(
             @PathVariable Long restaurantId,
             @PathVariable Long deliveryAreaId) {
+        log.debug("Entering addDeliveryArea method with restaurantId={}, deliveryAreaId={}", restaurantId, deliveryAreaId);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -36,6 +39,7 @@ public class RestaurantDeliveryAreaController {
     public ResponseEntity<List<RestaurantDeliveryAreaResponseDto>>
     getDeliveryAreasByRestaurant(
             @PathVariable Long restaurantId) {
+        log.debug("Entering getDeliveryAreasByRestaurant method with restaurantId={}", restaurantId);
 
         return ResponseEntity.ok(
                 restaurantDeliveryAreaService
@@ -48,6 +52,7 @@ public class RestaurantDeliveryAreaController {
     public ResponseEntity<Void> removeDeliveryArea(
             @PathVariable Long restaurantId,
             @PathVariable Long deliveryAreaId) {
+        log.debug("Entering removeDeliveryArea method with restaurantId={}, deliveryAreaId={}", restaurantId, deliveryAreaId);
 
         restaurantDeliveryAreaService
                 .removeDeliveryArea(restaurantId, deliveryAreaId);

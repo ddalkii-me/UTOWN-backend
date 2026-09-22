@@ -11,7 +11,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/dishes")
 public class DishController {
@@ -27,6 +29,7 @@ public class DishController {
     public ResponseEntity<DishResponseDto> createDish(
             @Valid @RequestBody DishRequestDto request
     ) {
+        log.debug("Entering createDish method");
         DishResponseDto response = dishService.createDish(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -48,6 +51,7 @@ public class DishController {
     public ResponseEntity<DishResponseDto> getDishById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getDishById method with id={}", id);
         DishResponseDto response = dishService.getDishById(id);
         return ResponseEntity.ok(response);
     }
@@ -57,6 +61,7 @@ public class DishController {
     public ResponseEntity<DishResponseDto> updateDishById(
             @Valid @RequestBody DishRequestDto request, @PathVariable Long id
     ) {
+        log.debug("Entering updateDishById method with id={}", id);
         DishResponseDto response = dishService.updateDish(id, request);
         return ResponseEntity.ok(response);
     }
@@ -66,6 +71,7 @@ public class DishController {
     public ResponseEntity<Void> deleteDishById(
             @PathVariable Long id
     ) {
+        log.debug("Entering deleteDishById method with id={}", id);
         dishService.deleteDish(id);
         return ResponseEntity.noContent().build();
     }
@@ -75,6 +81,7 @@ public class DishController {
     public ResponseEntity<Void> restoreDishById(
             @PathVariable Long id
     ) {
+        log.debug("Entering restoreDishById method with id={}", id);
         dishService.restoreDish(id);
         return ResponseEntity.noContent().build();
     }

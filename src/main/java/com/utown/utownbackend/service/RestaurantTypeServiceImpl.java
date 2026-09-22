@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RestaurantTypeServiceImpl implements RestaurantTypeService {
@@ -19,6 +21,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
     @Override
     public RestaurantTypeResponseDto createRestaurantType(
             RestaurantTypeRequestDto request) {
+        log.info("Executing createRestaurantType");
 
         RestaurantType restaurantType = new RestaurantType();
 
@@ -33,6 +36,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
 
     @Override
     public List<RestaurantTypeResponseDto> getAllRestaurantTypes() {
+        log.info("Executing getAllRestaurantTypes");
 
         List<RestaurantType> restaurantTypes =
                 restaurantTypeRepository.findAll();
@@ -44,6 +48,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
 
     @Override
     public RestaurantTypeResponseDto getRestaurantTypeById(Long id) {
+        log.info("Executing getRestaurantTypeById with id={}", id);
 
         RestaurantType restaurantType = restaurantTypeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
@@ -55,6 +60,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
     public RestaurantTypeResponseDto updateRestaurantType(
             Long id,
             RestaurantTypeRequestDto request) {
+        log.info("Executing updateRestaurantType with id={}", id);
 
         RestaurantType restaurantType = restaurantTypeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));
@@ -70,6 +76,7 @@ public class RestaurantTypeServiceImpl implements RestaurantTypeService {
 
     @Override
     public void deleteRestaurantType(Long id) {
+        log.info("Executing deleteRestaurantType with id={}", id);
 
         RestaurantType restaurantType = restaurantTypeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant type not found"));

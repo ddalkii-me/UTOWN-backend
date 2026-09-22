@@ -10,7 +10,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class RatingController {
             @PathVariable Long orderId,
             @Valid @RequestBody RatingRequestDto request
     ) {
+        log.debug("Entering createRating method with orderId={}", orderId);
         RatingResponseDto response = ratingService.createRating(
                 orderId,
                 request
@@ -37,6 +40,7 @@ public class RatingController {
     public ResponseEntity<List<RatingResponseDto>> getRatingsByRestaurant(
             @PathVariable Long restaurantId
     ) {
+        log.debug("Entering getRatingsByRestaurant method with restaurantId={}", restaurantId);
         return ResponseEntity.ok(
                 ratingService.getRatingsByRestaurant(restaurantId)
         );
@@ -47,6 +51,7 @@ public class RatingController {
     public ResponseEntity<RatingResponseDto> getRatingById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getRatingById method with id={}", id);
         return ResponseEntity.ok(
                 ratingService.getRatingById(id)
         );
@@ -57,6 +62,7 @@ public class RatingController {
     public ResponseEntity<Void> deleteRating(
             @PathVariable Long id
     ) {
+        log.debug("Entering deleteRating method with id={}", id);
         ratingService.deleteRating(id);
 
         return ResponseEntity.noContent().build();

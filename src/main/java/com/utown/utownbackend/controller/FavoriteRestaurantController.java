@@ -8,7 +8,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users/{userId}/favorites")
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class FavoriteRestaurantController {
     public ResponseEntity<FavoriteRestaurantResponseDto> addFavorite(
             @PathVariable Long userId,
             @PathVariable Long restaurantId) {
+        log.debug("Entering addFavorite method with userId={}, restaurantId={}", userId, restaurantId);
 
         FavoriteRestaurantResponseDto response =
                 favoriteRestaurantService.addFavorite(userId, restaurantId);
@@ -32,6 +35,7 @@ public class FavoriteRestaurantController {
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<List<FavoriteRestaurantResponseDto>> getFavorites(
             @PathVariable Long userId) {
+        log.debug("Entering getFavorites method with userId={}", userId);
 
         return ResponseEntity.ok(
                 favoriteRestaurantService.getFavoritesByUser(userId)
@@ -43,6 +47,7 @@ public class FavoriteRestaurantController {
     public ResponseEntity<Void> removeFavorite(
             @PathVariable Long userId,
             @PathVariable Long restaurantId) {
+        log.debug("Entering removeFavorite method with userId={}, restaurantId={}", userId, restaurantId);
 
         favoriteRestaurantService.removeFavorite(userId, restaurantId);
 

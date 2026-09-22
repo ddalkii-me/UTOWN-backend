@@ -47,6 +47,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     @Override
     @Transactional
     public PasswordResetRequestResponseDto requestPasswordReset(PasswordResetRequestDto request) {
+        log.info("Executing requestPasswordReset");
         String normalizedPhone = PhoneUtil.normalizePhone(request.phone());
         if (normalizedPhone == null) {
             throw new IllegalArgumentException("Invalid phone number format");
@@ -96,6 +97,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     @Override
     @Transactional
     public PasswordResetVerifyResponseDto verifyPasswordReset(PasswordResetVerifyDto request) {
+        log.info("Executing verifyPasswordReset");
         String normalizedPhone = PhoneUtil.normalizePhone(request.phone());
         if (normalizedPhone == null) {
             throw new IllegalArgumentException("Invalid phone number format");
@@ -136,6 +138,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     @Override
     @Transactional
     public void confirmPasswordReset(PasswordResetConfirmDto request) {
+        log.info("Executing confirmPasswordReset");
         if (!jwtUtil.validatePasswordResetToken(request.resetToken())) {
             throw new InvalidTokenException("Invalid or expired password reset token");
         }

@@ -25,6 +25,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
 
     @Override
     public RiderProfileResponseDto createRiderProfile(RiderProfileRequestDto request) {
+        log.info("Executing createRiderProfile");
         log.info("Creating rider profile for user ID: {}", request.userId());
 
         User user = userRepository.findById(request.userId())
@@ -85,6 +86,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     @Override
     @Transactional(readOnly = true)
     public RiderProfileResponseDto getRiderProfileById(Long id) {
+        log.info("Executing getRiderProfileById with id={}", id);
         return riderProfileRepository.findByIdAndUserDeletedAtIsNull(id)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
@@ -93,6 +95,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     @Override
     @Transactional(readOnly = true)
     public RiderProfileResponseDto getRiderProfileByUserId(Long userId) {
+        log.info("Executing getRiderProfileByUserId with userId={}", userId);
         return riderProfileRepository.findByUserIdAndUserDeletedAtIsNull(userId)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found for user id: " + userId));
@@ -101,6 +104,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
     @Override
     @Transactional(readOnly = true)
     public List<RiderProfileResponseDto> getAllRiderProfiles(RiderStatus status, Boolean availability) {
+        log.info("Executing getAllRiderProfiles with status={}, availability={}", status, availability);
         List<RiderProfile> list;
 
         if (status != null && availability != null) {
@@ -120,6 +124,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
 
     @Override
     public RiderProfileResponseDto updateRiderProfile(Long id, RiderProfileUpdateRequestDto request) {
+        log.info("Executing updateRiderProfile with id={}", id);
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
@@ -139,6 +144,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
 
     @Override
     public RiderProfileResponseDto updateAvailability(Long id, RiderAvailabilityUpdateRequestDto request) {
+        log.info("Executing updateAvailability with id={}", id);
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
@@ -159,6 +165,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
 
     @Override
     public RiderProfileResponseDto updateStatus(Long id, RiderStatusUpdateRequestDto request) {
+        log.info("Executing updateStatus with id={}", id);
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
@@ -192,6 +199,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
 
     @Override
     public void deleteRiderProfile(Long id) {
+        log.info("Executing deleteRiderProfile with id={}", id);
         RiderProfile rider = riderProfileRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Rider profile not found with id: " + id));
 
@@ -212,6 +220,7 @@ public class RiderProfileServiceImpl implements RiderProfileService {
 
     @Override
     public void deactivateRiderProfileByUserId(Long userId) {
+        log.info("Executing deactivateRiderProfileByUserId with userId={}", userId);
         riderProfileRepository.findByUserId(userId).ifPresent(rider -> {
             rider.setStatus(RiderStatus.INACTIVE);
             rider.setAvailability(false);

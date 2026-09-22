@@ -10,7 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class CartController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<CartResponseDto> getCart(@RequestParam Long userId) {
+        log.debug("Entering getCart method with userId={}", userId);
         return ResponseEntity.ok(cartService.getCart(userId));
     }
 
@@ -40,6 +43,7 @@ public class CartController {
             @RequestParam Long userId,
             @PathVariable Long itemId,
             @Valid @RequestBody UpdateCartItemRequestDto request) {
+        log.debug("Entering updateCartItem method with userId={}, itemId={}", userId, itemId);
         return ResponseEntity.ok(cartService.updateCartItemQuantity(userId, itemId, request));
     }
 
@@ -48,12 +52,14 @@ public class CartController {
     public ResponseEntity<CartResponseDto> removeCartItem(
             @RequestParam Long userId,
             @PathVariable Long itemId) {
+        log.debug("Entering removeCartItem method with userId={}, itemId={}", userId, itemId);
         return ResponseEntity.ok(cartService.removeCartItem(userId, itemId));
     }
 
     @DeleteMapping
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<Void> clearCart(@RequestParam Long userId) {
+        log.debug("Entering clearCart method with userId={}", userId);
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
     }

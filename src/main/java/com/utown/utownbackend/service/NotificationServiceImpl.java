@@ -26,6 +26,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDto createNotification(NotificationRequestDto request) {
+        log.info("Executing createNotification");
         log.info("Creating notification for user ID: {}, type: {}", request.userId(), request.type());
 
         User user = userRepository.findById(request.userId())
@@ -48,6 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public List<NotificationResponseDto> getNotificationsForUser(Long userId, Boolean isRead) {
+        log.info("Executing getNotificationsForUser with userId={}, isRead={}", userId, isRead);
         validateUserExists(userId);
 
         List<Notification> list = (isRead != null)
@@ -63,6 +65,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationResponseDto getNotificationById(Long id, Long userId) {
+        log.info("Executing getNotificationById with id={}, userId={}", id, userId);
         return notificationRepository.findByIdAndUserId(id, userId)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
@@ -72,6 +75,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationResponseDto getNotificationById(Long id) {
+        log.info("Executing getNotificationById with id={}", id);
         return notificationRepository.findById(id)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
@@ -80,6 +84,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public UnreadNotificationCountDto getUnreadCount(Long userId) {
+        log.info("Executing getUnreadCount with userId={}", userId);
         validateUserExists(userId);
         long count = notificationRepository.countByUserIdAndIsReadFalse(userId);
         return new UnreadNotificationCountDto(count);
@@ -87,6 +92,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDto markAsRead(Long id, Long userId) {
+        log.info("Executing markAsRead with id={}, userId={}", id, userId);
         Notification notification = notificationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
 
@@ -99,6 +105,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDto markAsRead(Long id) {
+        log.info("Executing markAsRead with id={}", id);
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
 
@@ -111,6 +118,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void markAllAsRead(Long userId) {
+        log.info("Executing markAllAsRead with userId={}", userId);
         validateUserExists(userId);
         int count = notificationRepository.markAllAsReadByUserId(userId);
         log.info("Marked {} notifications as read for user ID: {}", count, userId);
@@ -118,6 +126,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void deleteNotification(Long id, Long userId) {
+        log.info("Executing deleteNotification with id={}, userId={}", id, userId);
         Notification notification = notificationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
 
@@ -127,6 +136,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void deleteNotification(Long id) {
+        log.info("Executing deleteNotification with id={}", id);
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Notification not found with id: " + id));
 

@@ -11,7 +11,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/dish-options")
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class DishOptionController {
     public ResponseEntity<DishOptionResponseDto> createDishOption(
             @Valid @RequestBody DishOptionRequestDto request
     ) {
+        log.debug("Entering createDishOption method");
         DishOptionResponseDto response = dishOptionService.createDishOption(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -31,6 +34,7 @@ public class DishOptionController {
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionResponseDto>> getAllDishOptions() {
+        log.debug("Entering getAllDishOptions method");
         return ResponseEntity.ok(dishOptionService.getAllDishOptions());
     }
 
@@ -39,6 +43,7 @@ public class DishOptionController {
     public ResponseEntity<List<DishOptionResponseDto>> getDishOptionsByGroupId(
             @PathVariable Long optionGroupId
     ) {
+        log.debug("Entering getDishOptionsByGroupId method with optionGroupId={}", optionGroupId);
         return ResponseEntity.ok(dishOptionService.getDishOptionsByGroupId(optionGroupId));
     }
 
@@ -47,6 +52,7 @@ public class DishOptionController {
     public ResponseEntity<DishOptionResponseDto> getDishOptionById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getDishOptionById method with id={}", id);
         return ResponseEntity.ok(dishOptionService.getDishOptionById(id));
     }
 
@@ -56,6 +62,7 @@ public class DishOptionController {
             @PathVariable Long id,
             @Valid @RequestBody DishOptionRequestDto request
     ) {
+        log.debug("Entering updateDishOption method with id={}", id);
         return ResponseEntity.ok(dishOptionService.updateDishOption(id, request));
     }
 
@@ -64,6 +71,7 @@ public class DishOptionController {
     public ResponseEntity<Void> deleteDishOption(
             @PathVariable Long id
     ) {
+        log.debug("Entering deleteDishOption method with id={}", id);
         dishOptionService.deleteDishOption(id);
         return ResponseEntity.noContent().build();
     }

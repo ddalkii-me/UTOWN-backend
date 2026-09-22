@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -31,6 +33,7 @@ public class RestaurantDeliveryAreaServiceImpl
             Long restaurantId,
             Long deliveryAreaId
     ) {
+        log.info("Executing addDeliveryArea with restaurantId={}, deliveryAreaId={}", restaurantId, deliveryAreaId);
 
         Restaurant restaurant = restaurantRepository
                 .findByIdAndDeletedAtIsNull(restaurantId)
@@ -103,6 +106,7 @@ public class RestaurantDeliveryAreaServiceImpl
     @Transactional(readOnly = true)
     public List<RestaurantDeliveryAreaResponseDto>
     getDeliveryAreasByRestaurant(Long restaurantId) {
+        log.info("Executing getDeliveryAreasByRestaurant with restaurantId={}", restaurantId);
 
         restaurantRepository
                 .findByIdAndDeletedAtIsNull(restaurantId)
@@ -124,6 +128,7 @@ public class RestaurantDeliveryAreaServiceImpl
             Long restaurantId,
             Long deliveryAreaId
     ) {
+        log.info("Executing removeDeliveryArea with restaurantId={}, deliveryAreaId={}", restaurantId, deliveryAreaId);
 
         RestaurantDeliveryArea restaurantDeliveryArea =
                 restaurantDeliveryAreaRepository

@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -33,6 +35,7 @@ public class RatingServiceImpl implements RatingService {
             Long orderId,
             RatingRequestDto request
     ) {
+        log.info("Executing createRating with orderId={}", orderId);
 
         Order order = orderRepository
                 .findById(orderId)
@@ -92,6 +95,7 @@ public class RatingServiceImpl implements RatingService {
     public List<RatingResponseDto> getRatingsByRestaurant(
             Long restaurantId
     ) {
+        log.info("Executing getRatingsByRestaurant with restaurantId={}", restaurantId);
 
         restaurantRepository
                 .findById(restaurantId)
@@ -111,6 +115,7 @@ public class RatingServiceImpl implements RatingService {
     @Override
     @Transactional(readOnly = true)
     public RatingResponseDto getRatingById(Long id) {
+        log.info("Executing getRatingById with id={}", id);
 
         Rating rating = ratingRepository
                 .findByIdAndDeletedAtIsNull(id)
@@ -125,6 +130,7 @@ public class RatingServiceImpl implements RatingService {
 
     @Override
     public void deleteRating(Long id) {
+        log.info("Executing deleteRating with id={}", id);
 
         Rating rating = ratingRepository
                 .findByIdAndDeletedAtIsNull(id)
