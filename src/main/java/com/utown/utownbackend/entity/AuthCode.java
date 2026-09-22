@@ -36,4 +36,7 @@ public class AuthCode extends BaseEntity {
     @Column(name = "used_at")
     private LocalDateTime usedAt;
 
+    @Column(name = "reset_at")
+    private LocalDateTime resetAt;
+
 }

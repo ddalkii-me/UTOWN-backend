@@ -48,6 +48,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(phone) && SecurityContextHolder.getContext().getAuthentication() == null) {
                 
                 if (jwtUtil.validateToken(token)) {
+                    // Reject non-access tokens (e.g., password reset tokens)
+                    String purpose = jwtUtil.extractClaim(token, claims -> claims.get("purpose", String.class));
+                    if (purpose != null) {
+                        log.warn("Rejected non-access token with purpose: {}", purpose);
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+
                     List<String> roles = jwtUtil.extractRoles(token);
                     List<SimpleGrantedAuthority> authorities = roles != null 
                             ? roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
