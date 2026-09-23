@@ -221,12 +221,6 @@ public class OrderServiceImpl implements OrderService {
             Authentication authentication
     ) {
         Specification<Order> spec = (root, query, cb) -> {
-            if (query != null && Order.class.equals(query.getResultType())) {
-                root.fetch("user", JoinType.LEFT);
-                root.fetch("restaurant", JoinType.LEFT);
-                root.fetch("address", JoinType.LEFT);
-            }
-
             List<Predicate> predicates = new ArrayList<>();
 
             if (authentication == null
@@ -302,7 +296,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto acceptOrder(Long id, OrderAcceptRequestDto request) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.PENDING) {
@@ -324,7 +318,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto startPreparation(Long id) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.ACCEPTED) {
@@ -343,7 +337,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto completeOrder(Long id) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.IN_PREPARATION) {
@@ -365,7 +359,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto declineOrder(Long id, OrderDeclineRequestDto request) {
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.PENDING) {
