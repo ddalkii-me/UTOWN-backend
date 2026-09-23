@@ -8,5 +8,6 @@ public enum OrderStatus {
     READY_FOR_PICKUP,
     DELIVERED,
     COMPLETED,
-    DECLINED
+    DECLINED,
+    CANCELLED
 }
