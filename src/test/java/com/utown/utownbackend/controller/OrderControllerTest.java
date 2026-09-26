@@ -4,7 +4,11 @@ import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.OrderStatus;
 import com.utown.utownbackend.entity.PaymentMethod;
 import com.utown.utownbackend.entity.PaymentStatus;
+import com.utown.utownbackend.entity.User;
+import com.utown.utownbackend.entity.UserRole;
+import com.utown.utownbackend.security.CustomUserDetails;
 import com.utown.utownbackend.service.OrderService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -12,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +34,11 @@ class OrderControllerTest {
 
     @InjectMocks
     private OrderController orderController;
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     private OrderResponseDto createDummyOrderResponse(Long id, OrderStatus status) {
         return new OrderResponseDto(
@@ -191,5 +202,93 @@ class OrderControllerTest {
         assertEquals(OrderStatus.DECLINED, response.getBody().status());
         assertEquals("Too busy", response.getBody().rejectionReason());
         verify(orderService).declineOrder(1L, request);
+    }
+
+    @Test
+    void checkout_returnsCreatedStatusAndBody() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, "Leave at door");
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
+        when(orderService.checkout(request)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.checkout(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1L, response.getBody().id());
+        assertEquals(OrderStatus.PENDING, response.getBody().status());
+        verify(orderService).checkout(request);
+    }
+
+    @Test
+    void markReadyForPickup_returnsOk() {
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.READY_FOR_PICKUP);
+        when(orderService.markReadyForPickup(1L)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.markReadyForPickup(1L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.READY_FOR_PICKUP, response.getBody().status());
+        verify(orderService).markReadyForPickup(1L);
+    }
+
+    @Test
+    void cancelOrder_returnsOk() {
+        OrderCancelRequestDto request = new OrderCancelRequestDto("Customer changed their mind");
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.CANCELLED);
+        when(orderService.cancelOrder(1L, request)).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.cancelOrder(1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(OrderStatus.CANCELLED, response.getBody().status());
+        verify(orderService).cancelOrder(1L, request);
+    }
+
+    @Test
+    void createOrder_withNullUserId_usesAuthenticatedUserId() {
+        User authenticatedUser = new User();
+        authenticatedUser.setId(55L);
+        authenticatedUser.setRole(UserRole.CUSTOMER);
+        CustomUserDetails userDetails = new CustomUserDetails(authenticatedUser);
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        OrderRequestDto request = new OrderRequestDto(
+                null,
+                10L,
+                100L,
+                "Leave at door",
+                PaymentMethod.CARD,
+                List.of()
+        );
+
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
+        when(orderService.createOrder(any())).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.createOrder(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(orderService).createOrder(argThat(dto -> dto.userId() != null && dto.userId().equals(55L)));
+    }
+
+    @Test
+    void checkout_withNullUserId_usesAuthenticatedUserId() {
+        User authenticatedUser = new User();
+        authenticatedUser.setId(77L);
+        authenticatedUser.setRole(UserRole.CUSTOMER);
+        CustomUserDetails userDetails = new CustomUserDetails(authenticatedUser);
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        CheckoutRequestDto request = new CheckoutRequestDto(null, 100L, PaymentMethod.CARD, "Leave at door");
+        OrderResponseDto mockResponse = createDummyOrderResponse(1L, OrderStatus.PENDING);
+        when(orderService.checkout(any())).thenReturn(mockResponse);
+
+        ResponseEntity<OrderResponseDto> response = orderController.checkout(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(orderService).checkout(argThat(dto -> dto.userId() != null && dto.userId().equals(77L)));
     }
 }

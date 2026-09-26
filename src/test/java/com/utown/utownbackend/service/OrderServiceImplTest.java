@@ -5,6 +5,7 @@ import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import com.utown.utownbackend.security.CustomUserDetails;
 import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,9 +13,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,12 +60,25 @@ class OrderServiceImplTest {
     @Mock
     private OrderStatusHistoryRepository orderStatusHistoryRepository;
 
+    @Mock
+    private CartRepository cartRepository;
+
+    @Mock
+    private CartItemRepository cartItemRepository;
+
+    @Mock
+    private CartItemOptionRepository cartItemOptionRepository;
+
+    @Mock
+    private RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
     private User user;
     private Restaurant restaurant;
     private Address address;
+    private DeliveryArea deliveryArea;
     private Dish dish1;
     private DishOptionGroup optionGroup;
     private DishOption option1;
@@ -80,9 +98,14 @@ class OrderServiceImplTest {
         restaurant.setStatus(RestaurantStatus.OPEN);
         restaurant.setMinimumOrderAmount(BigDecimal.valueOf(5.00));
 
+        deliveryArea = new DeliveryArea();
+        deliveryArea.setId(10L);
+        deliveryArea.setName("Downtown");
+
         address = new Address();
         address.setId(100L);
         address.setUser(user);
+        address.setDeliveryArea(deliveryArea);
 
         dish1 = new Dish();
         dish1.setId(20L);
@@ -102,6 +125,14 @@ class OrderServiceImplTest {
         option1.setAdditionalPrice(BigDecimal.valueOf(2.50));
         option1.setOptionGroup(optionGroup);
         option1.setStatus(DishOptionStatus.AVAILABLE);
+
+        lenient().when(restaurantDeliveryAreaRepository.existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(any(), any()))
+                .thenReturn(true);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -463,7 +494,8 @@ class OrderServiceImplTest {
 
     @Test
     void completeOrder_success() {
-        Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
+        Order o = createTestOrder(500L, OrderStatus.DELIVERED);
+        o.setDeliveredAt(LocalDateTime.now().minusMinutes(5));
         OrderItem item = createTestOrderItem(600L, o);
 
         when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
@@ -474,8 +506,8 @@ class OrderServiceImplTest {
         OrderResponseDto response = orderService.completeOrder(500L);
 
         assertNotNull(response);
-        assertEquals(OrderStatus.READY_FOR_PICKUP, response.status());
-        assertNull(response.deliveredAt());
+        assertEquals(OrderStatus.COMPLETED, response.status());
+        assertNotNull(response.deliveredAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
     }
@@ -483,6 +515,15 @@ class OrderServiceImplTest {
     @Test
     void completeOrder_invalidStatus_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.PENDING);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void completeOrder_inPreparationStatus_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
         when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
 
         assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
@@ -518,6 +559,509 @@ class OrderServiceImplTest {
         OrderDeclineRequestDto request = new OrderDeclineRequestDto("Restaurant is closed");
         assertThrows(IllegalStateException.class, () -> orderService.declineOrder(500L, request));
         verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void checkout_success() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, "Leave at door");
+
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(2);
+        cartItem.setUnitPrice(BigDecimal.valueOf(10.00));
+        cartItem.setSubtotal(BigDecimal.valueOf(25.00));
+
+        CartItemOption cartOption = new CartItemOption();
+        cartOption.setId(400L);
+        cartOption.setCartItem(cartItem);
+        cartOption.setDishOption(option1);
+        cartOption.setOptionName("Extra Cheese");
+        cartOption.setOptionPrice(BigDecimal.valueOf(2.50));
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(300L))).thenReturn(List.of(cartOption));
+        when(dishRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(dish1));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(40L)).thenReturn(Optional.of(option1));
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(500L);
+            return o;
+        });
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(inv -> {
+            OrderItem item = inv.getArgument(0);
+            item.setId(600L);
+            return item;
+        });
+        when(orderItemOptionRepository.save(any(OrderItemOption.class))).thenAnswer(inv -> {
+            OrderItemOption opt = inv.getArgument(0);
+            opt.setId(700L);
+            return opt;
+        });
+
+        OrderResponseDto response = orderService.checkout(request);
+
+        assertNotNull(response);
+        assertEquals(500L, response.id());
+        assertEquals(1L, response.userId());
+        assertEquals(10L, response.restaurantId());
+        assertEquals(100L, response.addressId());
+        assertEquals(OrderStatus.PENDING, response.status());
+        assertEquals(PaymentMethod.CARD, response.paymentMethod());
+        assertEquals(PaymentStatus.PENDING, response.paymentStatus());
+        assertEquals("Leave at door", response.deliveryNote());
+        assertEquals(BigDecimal.valueOf(25.00), response.subTotal());
+        assertEquals(BigDecimal.valueOf(25.00), response.totalAmount());
+        assertEquals(1, response.items().size());
+        assertEquals("Pepperoni Pizza", response.items().get(0).dishName());
+        assertEquals(1, response.items().get(0).options().size());
+        assertEquals("Extra Cheese", response.items().get(0).options().get(0).optionName());
+
+        assertEquals(CartStatus.EXPIRED, cart.getStatus());
+        verify(cartRepository).save(cart);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void checkout_noActiveCart_throwsIllegalStateException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> orderService.checkout(request));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_emptyCart_throwsIllegalStateException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class, () -> orderService.checkout(request));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_restaurantClosed_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Restaurant closedRestaurant = new Restaurant();
+        closedRestaurant.setId(10L);
+        closedRestaurant.setStatus(RestaurantStatus.CLOSED);
+
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(closedRestaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_outsideDeliveryArea_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(restaurantDeliveryAreaRepository.existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(10L, 10L)).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_belowMinimumOrderAmount_throwsIllegalArgumentException() {
+        restaurant.setMinimumOrderAmount(BigDecimal.valueOf(50.00));
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(300L))).thenReturn(List.of());
+        when(dishRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(dish1));
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelOrder_pending_success() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        o.setPaymentStatus(PaymentStatus.PAID);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        OrderCancelRequestDto request = new OrderCancelRequestDto("Customer changed their mind");
+        OrderResponseDto response = orderService.cancelOrder(500L, request);
+
+        assertNotNull(response);
+        assertEquals(OrderStatus.CANCELLED, response.status());
+        assertEquals("Customer changed their mind", response.rejectionReason());
+        assertNotNull(response.cancelledAt());
+        assertEquals(PaymentStatus.REFUNDED, response.paymentStatus());
+        verify(orderRepository).save(o);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void cancelOrder_notPending_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        OrderCancelRequestDto request = new OrderCancelRequestDto("Changed mind");
+        assertThrows(IllegalStateException.class, () -> orderService.cancelOrder(500L, request));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void markReadyForPickup_inPreparation_success() {
+        Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
+        OrderItem item = createTestOrderItem(600L, o);
+
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
+        when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
+
+        OrderResponseDto response = orderService.markReadyForPickup(500L);
+
+        assertNotNull(response);
+        assertEquals(OrderStatus.READY_FOR_PICKUP, response.status());
+        assertNotNull(response.readyAt());
+        verify(orderRepository).save(o);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+    }
+
+    @Test
+    void markReadyForPickup_notInPreparation_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.PENDING);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        assertThrows(IllegalStateException.class, () -> orderService.markReadyForPickup(500L));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void completeOrder_readyForPickup_throwsIllegalStateException() {
+        Order o = createTestOrder(500L, OrderStatus.READY_FOR_PICKUP);
+        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+
+        assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
+        verify(orderRepository, never()).save(o);
+    }
+
+    @Test
+    void checkout_dishUnavailable_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        Dish unavailableDish = new Dish();
+        unavailableDish.setId(20L);
+        unavailableDish.setName("Pepperoni Pizza");
+        unavailableDish.setStatus(DishStatus.ON_HOLD);
+        unavailableDish.setRestaurant(restaurant);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(dishRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(unavailableDish));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        assertTrue(ex.getMessage().contains("currently unavailable"));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_addressBelongsToAnotherUser_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        User anotherUser = new User();
+        anotherUser.setId(999L);
+        Address otherAddress = new Address();
+        otherAddress.setId(100L);
+        otherAddress.setUser(anotherUser);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(otherAddress));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        assertTrue(ex.getMessage().contains("Address does not belong to user"));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_missingRequiredOptionGroup_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        DishOptionGroup requiredGroup = new DishOptionGroup();
+        requiredGroup.setId(70L);
+        requiredGroup.setName("Size");
+        requiredGroup.setDish(dish1);
+        requiredGroup.setRequired(true);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(dishRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(dish1));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(300L))).thenReturn(List.of());
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(20L))
+                .thenReturn(List.of(requiredGroup));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        assertTrue(ex.getMessage().contains("Missing required option group"));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_minSelectionsNotMet_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        DishOptionGroup minGroup = new DishOptionGroup();
+        minGroup.setId(70L);
+        minGroup.setName("Toppings");
+        minGroup.setDish(dish1);
+        minGroup.setMinSelections(2);
+
+        CartItemOption cartOption = new CartItemOption();
+        cartOption.setId(400L);
+        cartOption.setCartItem(cartItem);
+        cartOption.setDishOption(option1);
+
+        option1.setOptionGroup(minGroup);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(dishRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(dish1));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(300L))).thenReturn(List.of(cartOption));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(40L)).thenReturn(Optional.of(option1));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(20L))
+                .thenReturn(List.of(minGroup));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        assertTrue(ex.getMessage().contains("Minimum selections not met"));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_maxSelectionsExceeded_throwsIllegalArgumentException() {
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, null);
+        Cart cart = new Cart();
+        cart.setId(200L);
+        cart.setUser(user);
+        cart.setRestaurant(restaurant);
+        cart.setStatus(CartStatus.ACTIVE);
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(300L);
+        cartItem.setCart(cart);
+        cartItem.setDish(dish1);
+        cartItem.setQuantity(1);
+
+        DishOptionGroup maxGroup = new DishOptionGroup();
+        maxGroup.setId(70L);
+        maxGroup.setName("Sauce");
+        maxGroup.setDish(dish1);
+        maxGroup.setMaxSelections(1);
+
+        DishOption optA = new DishOption();
+        optA.setId(40L);
+        optA.setName("BBQ");
+        optA.setAdditionalPrice(BigDecimal.ZERO);
+        optA.setStatus(DishOptionStatus.AVAILABLE);
+        optA.setOptionGroup(maxGroup);
+
+        DishOption optB = new DishOption();
+        optB.setId(41L);
+        optB.setName("Garlic");
+        optB.setAdditionalPrice(BigDecimal.ZERO);
+        optB.setStatus(DishOptionStatus.AVAILABLE);
+        optB.setOptionGroup(maxGroup);
+
+        CartItemOption cartOptA = new CartItemOption();
+        cartOptA.setId(400L);
+        cartOptA.setCartItem(cartItem);
+        cartOptA.setDishOption(optA);
+
+        CartItemOption cartOptB = new CartItemOption();
+        cartOptB.setId(401L);
+        cartOptB.setCartItem(cartItem);
+        cartOptB.setDishOption(optB);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(cartRepository.findByUserIdAndStatus(1L, CartStatus.ACTIVE)).thenReturn(Optional.of(cart));
+        when(cartItemRepository.findAllByCartId(200L)).thenReturn(List.of(cartItem));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(dishRepository.findByIdAndDeletedAtIsNull(20L)).thenReturn(Optional.of(dish1));
+        when(cartItemOptionRepository.findAllByCartItemIdIn(List.of(300L))).thenReturn(List.of(cartOptA, cartOptB));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(40L)).thenReturn(Optional.of(optA));
+        when(dishOptionRepository.findByIdAndDeletedAtIsNull(41L)).thenReturn(Optional.of(optB));
+        when(dishOptionGroupRepository.findAllByDishIdAndDeletedAtIsNullOrderBySortOrderAsc(20L))
+                .thenReturn(List.of(maxGroup));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> orderService.checkout(request));
+        assertTrue(ex.getMessage().contains("Maximum selections exceeded"));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrder_outsideDeliveryArea_throwsIllegalArgument() {
+        OrderRequestDto orderRequest = new OrderRequestDto(
+                1L,
+                10L,
+                100L,
+                null,
+                PaymentMethod.CARD,
+                List.of(new OrderItemRequestDto(20L, 1, List.of()))
+        );
+
+        when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user));
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(restaurant));
+        when(addressRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(address));
+        when(restaurantDeliveryAreaRepository.existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(10L, 10L)).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.createOrder(orderRequest));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void checkout_authenticatedCustomerChecksOutAnotherUsersCart_throwsAccessDeniedException() {
+        User authenticatedUser = new User();
+        authenticatedUser.setId(99L);
+        authenticatedUser.setRole(UserRole.CUSTOMER);
+        CustomUserDetails userDetails = new CustomUserDetails(authenticatedUser);
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        CheckoutRequestDto request = new CheckoutRequestDto(1L, 100L, PaymentMethod.CARD, "Note");
+
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> orderService.checkout(request));
+        assertEquals("Cannot checkout another user's cart", exception.getMessage());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrder_authenticatedCustomerCreatesOrderForAnotherUser_throwsAccessDeniedException() {
+        User authenticatedUser = new User();
+        authenticatedUser.setId(99L);
+        authenticatedUser.setRole(UserRole.CUSTOMER);
+        CustomUserDetails userDetails = new CustomUserDetails(authenticatedUser);
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        OrderRequestDto request = new OrderRequestDto(1L, 10L, 100L, "Note", PaymentMethod.CARD, List.of());
+
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> orderService.createOrder(request));
+        assertEquals("Customers can only place orders for themselves", exception.getMessage());
+        verify(orderRepository, never()).save(any());
     }
 
     private Order createTestOrder(Long id, OrderStatus status) {

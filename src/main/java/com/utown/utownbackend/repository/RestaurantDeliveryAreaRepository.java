@@ -26,6 +26,11 @@ public interface RestaurantDeliveryAreaRepository
             Long deliveryAreaId
     );
 
+    boolean existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(
+            Long restaurantId,
+            Long deliveryAreaId
+    );
+
     Optional<RestaurantDeliveryArea>
     findByRestaurantIdAndDeliveryAreaId(
             Long restaurantId,
