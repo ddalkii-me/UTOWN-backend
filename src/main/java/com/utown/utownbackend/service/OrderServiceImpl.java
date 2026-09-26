@@ -18,9 +18,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import com.utown.utownbackend.security.CustomUserDetails;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
@@ -42,6 +39,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemRepository cartItemRepository;
     private final CartItemOptionRepository cartItemOptionRepository;
     private final RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
+    private final SocketIONotificationService socketIONotificationService;
 
     private record PreparedItem(
             Dish dish,
@@ -227,7 +225,14 @@ public class OrderServiceImpl implements OrderService {
             ));
         }
 
-        return toOrderResponseDto(savedOrder, itemResponseDtos);
+        OrderResponseDto response = toOrderResponseDto(savedOrder, itemResponseDtos);
+
+        socketIONotificationService.sendNewOrder(
+                restaurant.getOwner().getId(),
+                response
+        );
+
+        return response;
     }
 
 
@@ -333,7 +338,12 @@ public class OrderServiceImpl implements OrderService {
         recordStatusHistory(savedOrder, OrderStatus.ACCEPTED, actor,
                 "Estimated cooking time: " + request.estimatedCookingMinutes() + " mins");
 
-        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        OrderResponseDto response =
+                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+
+        sendOrderStatusUpdate(savedOrder, response);
+
+        return response;
     }
 
     @Override
@@ -352,7 +362,12 @@ public class OrderServiceImpl implements OrderService {
         User actor = resolveActor(savedOrder);
         recordStatusHistory(savedOrder, OrderStatus.IN_PREPARATION, actor, null);
 
-        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        OrderResponseDto response =
+                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+
+        sendOrderStatusUpdate(savedOrder, response);
+
+        return response;
     }
 
     @Override
@@ -370,7 +385,12 @@ public class OrderServiceImpl implements OrderService {
         User actor = resolveActor(savedOrder);
         recordStatusHistory(savedOrder, OrderStatus.COMPLETED, actor, null);
 
-        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        OrderResponseDto response =
+                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+
+        sendOrderStatusUpdate(savedOrder, response);
+
+        return response;
     }
 
     @Override
@@ -391,7 +411,12 @@ public class OrderServiceImpl implements OrderService {
         User actor = resolveActor(savedOrder);
         recordStatusHistory(savedOrder, OrderStatus.DECLINED, actor, request.reason());
 
-        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        OrderResponseDto response =
+                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+
+        sendOrderStatusUpdate(savedOrder, response);
+
+        return response;
     }
 
     @Override
@@ -572,7 +597,14 @@ public class OrderServiceImpl implements OrderService {
 
         recordStatusHistory(savedOrder, OrderStatus.PENDING, user, "Order created via checkout");
 
-        return toOrderResponseDto(savedOrder, orderItemDtos);
+        OrderResponseDto response = toOrderResponseDto(savedOrder, orderItemDtos);
+
+        socketIONotificationService.sendNewOrder(
+                restaurant.getOwner().getId(),
+                response
+        );
+
+        return response;
     }
 
     @Override
@@ -592,7 +624,12 @@ public class OrderServiceImpl implements OrderService {
         User actor = resolveActor(savedOrder);
         recordStatusHistory(savedOrder, OrderStatus.READY_FOR_PICKUP, actor, null);
 
-        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        OrderResponseDto response =
+                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+
+        sendOrderStatusUpdate(savedOrder, response);
+
+        return response;
     }
 
     @Override
@@ -616,7 +653,12 @@ public class OrderServiceImpl implements OrderService {
         User actor = order.getUser();
         recordStatusHistory(savedOrder, OrderStatus.CANCELLED, actor, request.reason());
 
-        return toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        OrderResponseDto response =
+                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+
+        sendOrderStatusUpdate(savedOrder, response);
+
+        return response;
     }
 
     private User resolveActor(Order order) {
@@ -624,6 +666,16 @@ public class OrderServiceImpl implements OrderService {
             return order.getRestaurant().getOwner();
         }
         return order.getUser();
+    }
+
+    private void sendOrderStatusUpdate(
+            Order order,
+            OrderResponseDto response
+    ) {
+        socketIONotificationService.sendOrderStatusUpdated(
+                order.getUser().getId(),
+                response
+        );
     }
 
     private void recordStatusHistory(Order order, OrderStatus status, User user, String reason) {

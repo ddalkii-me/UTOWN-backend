@@ -1,5 +1,7 @@
 package com.utown.utownbackend.integration;
 
+import com.utown.utownbackend.service.SocketIONotificationService;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import com.utown.utownbackend.dto.PasswordResetConfirmDto;
 import com.utown.utownbackend.dto.PasswordResetRequestDto;
@@ -61,6 +63,9 @@ class PasswordResetIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @MockitoBean
+    private SocketIONotificationService socketIONotificationService;
 
     private User user;
 

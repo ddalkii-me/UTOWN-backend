@@ -1,5 +1,7 @@
 package com.utown.utownbackend.integration;
 
+import com.utown.utownbackend.service.SocketIONotificationService;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import com.utown.utownbackend.dto.AuthResponseDto;
 import com.utown.utownbackend.dto.LoginRequestDto;
@@ -40,6 +42,9 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private SocketIONotificationService socketIONotificationService;
 
     @Test
     @DisplayName("POST /api/auth/register - successfully creates user and returns JWT token")

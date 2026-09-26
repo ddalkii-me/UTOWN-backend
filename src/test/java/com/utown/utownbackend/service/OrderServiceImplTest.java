@@ -72,6 +72,9 @@ class OrderServiceImplTest {
     @Mock
     private RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
 
+    @Mock
+    private SocketIONotificationService socketIONotificationService;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -208,6 +211,7 @@ class OrderServiceImplTest {
         verify(orderItemRepository).save(any(OrderItem.class));
         verify(orderItemOptionRepository).save(any(OrderItemOption.class));
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendNewOrder(99L, response);
     }
 
     @Test
@@ -445,6 +449,7 @@ class OrderServiceImplTest {
         assertNotNull(response.acceptedAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -481,6 +486,7 @@ class OrderServiceImplTest {
         assertEquals(OrderStatus.IN_PREPARATION, response.status());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -510,6 +516,7 @@ class OrderServiceImplTest {
         assertNotNull(response.deliveredAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -549,6 +556,7 @@ class OrderServiceImplTest {
         assertNotNull(response.rejectedAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -631,6 +639,7 @@ class OrderServiceImplTest {
         assertEquals(CartStatus.EXPIRED, cart.getStatus());
         verify(cartRepository).save(cart);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendNewOrder(99L, response);
     }
 
     @Test
@@ -761,6 +770,7 @@ class OrderServiceImplTest {
         assertEquals(PaymentStatus.REFUNDED, response.paymentStatus());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -790,6 +800,7 @@ class OrderServiceImplTest {
         assertNotNull(response.readyAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
