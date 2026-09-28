@@ -102,6 +102,21 @@ class AddressRepositoryTest {
     }
 
     @Test
+    @DisplayName("findAllByUserIdAndDeletedAtIsNull - eagerly fetches user, city, and deliveryArea")
+    void findAllByUserId_eagerlyFetchesAssociations() {
+        createAddress(user1, deliveryArea1, "Home", null);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Address> result = addressRepository.findAllByUserIdAndDeletedAtIsNull(user1.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getUser())).isTrue();
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getCity())).isTrue();
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getDeliveryArea())).isTrue();
+    }
+
+    @Test
     @DisplayName("existsByDeliveryAreaIdAndDeletedAtIsNull - checks active address presence in area")
     void existsByDeliveryAreaId_success() {
         createAddress(user1, deliveryArea1, "Home", null);
