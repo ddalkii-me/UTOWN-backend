@@ -11,7 +11,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/restaurant-types")
 @RequiredArgsConstructor
@@ -23,6 +25,7 @@ public class RestaurantTypeController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantTypeResponseDto> createRestaurantType(
             @Valid @RequestBody RestaurantTypeRequestDto request) {
+        log.debug("Entering createRestaurantType method");
 
         RestaurantTypeResponseDto response =
                 restaurantTypeService.createRestaurantType(request);
@@ -33,6 +36,7 @@ public class RestaurantTypeController {
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<RestaurantTypeResponseDto>> getAllRestaurantTypes() {
+        log.debug("Entering getAllRestaurantTypes method");
 
         List<RestaurantTypeResponseDto> restaurantTypes =
                 restaurantTypeService.getAllRestaurantTypes();
@@ -44,6 +48,7 @@ public class RestaurantTypeController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantTypeResponseDto> getRestaurantTypeById(
             @PathVariable Long id) {
+        log.debug("Entering getRestaurantTypeById method with id={}", id);
 
         RestaurantTypeResponseDto response =
                 restaurantTypeService.getRestaurantTypeById(id);
@@ -56,6 +61,7 @@ public class RestaurantTypeController {
     public ResponseEntity<RestaurantTypeResponseDto> updateRestaurantType(
             @PathVariable Long id,
             @Valid @RequestBody RestaurantTypeRequestDto request) {
+        log.debug("Entering updateRestaurantType method with id={}", id);
 
         RestaurantTypeResponseDto response =
                 restaurantTypeService.updateRestaurantType(id, request);
@@ -67,6 +73,7 @@ public class RestaurantTypeController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRestaurantType(
             @PathVariable Long id) {
+        log.debug("Entering deleteRestaurantType method with id={}", id);
 
         restaurantTypeService.deleteRestaurantType(id);
 

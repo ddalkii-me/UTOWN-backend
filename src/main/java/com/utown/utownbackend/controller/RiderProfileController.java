@@ -11,7 +11,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/riders")
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class RiderProfileController {
     public ResponseEntity<RiderProfileResponseDto> createRiderProfile(
             @Valid @RequestBody RiderProfileRequestDto request
     ) {
+        log.debug("Entering createRiderProfile method");
         RiderProfileResponseDto response = riderProfileService.createRiderProfile(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -43,6 +46,7 @@ public class RiderProfileController {
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getRiderProfileById method with id={}", id);
         RiderProfileResponseDto response = riderProfileService.getRiderProfileById(id);
         return ResponseEntity.ok(response);
     }
@@ -55,6 +59,7 @@ public class RiderProfileController {
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileByUserId(
             @PathVariable Long userId
     ) {
+        log.debug("Entering getRiderProfileByUserId method with userId={}", userId);
         RiderProfileResponseDto response = riderProfileService.getRiderProfileByUserId(userId);
         return ResponseEntity.ok(response);
     }
@@ -65,6 +70,7 @@ public class RiderProfileController {
             @PathVariable Long id,
             @Valid @RequestBody RiderProfileUpdateRequestDto request
     ) {
+        log.debug("Entering updateRiderProfile method with id={}", id);
         RiderProfileResponseDto response = riderProfileService.updateRiderProfile(id, request);
         return ResponseEntity.ok(response);
     }
@@ -75,6 +81,7 @@ public class RiderProfileController {
             @PathVariable Long id,
             @Valid @RequestBody RiderAvailabilityUpdateRequestDto request
     ) {
+        log.debug("Entering updateAvailability method with id={}", id);
         RiderProfileResponseDto response = riderProfileService.updateAvailability(id, request);
         return ResponseEntity.ok(response);
     }
@@ -85,6 +92,7 @@ public class RiderProfileController {
             @PathVariable Long id,
             @Valid @RequestBody RiderStatusUpdateRequestDto request
     ) {
+        log.debug("Entering updateStatus method with id={}", id);
         RiderProfileResponseDto response = riderProfileService.updateStatus(id, request);
         return ResponseEntity.ok(response);
     }
@@ -94,6 +102,7 @@ public class RiderProfileController {
     public ResponseEntity<Void> deleteRiderProfile(
             @PathVariable Long id
     ) {
+        log.debug("Entering deleteRiderProfile method with id={}", id);
         riderProfileService.deleteRiderProfile(id);
         return ResponseEntity.noContent().build();
     }

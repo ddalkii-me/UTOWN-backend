@@ -12,7 +12,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class NotificationController {
     public ResponseEntity<NotificationResponseDto> createNotification(
             @Valid @RequestBody NotificationRequestDto request
     ) {
+        log.debug("Entering createNotification method");
         NotificationResponseDto response = notificationService.createNotification(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -73,6 +76,7 @@ public class NotificationController {
     public ResponseEntity<UnreadNotificationCountDto> getUnreadCount(
             @RequestParam Long userId
     ) {
+        log.debug("Entering getUnreadCount method with userId={}", userId);
         UnreadNotificationCountDto response = notificationService.getUnreadCount(userId);
         return ResponseEntity.ok(response);
     }
@@ -107,6 +111,7 @@ public class NotificationController {
     public ResponseEntity<Void> markAllAsRead(
             @RequestParam Long userId
     ) {
+        log.debug("Entering markAllAsRead method with userId={}", userId);
         notificationService.markAllAsRead(userId);
         return ResponseEntity.noContent().build();
     }

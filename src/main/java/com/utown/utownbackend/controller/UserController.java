@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class UserController {
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileResponseDto> getCurrentUserProfile(Principal principal) {
+        log.debug("Entering getCurrentUserProfile method with principal={}", principal);
         if (principal == null) {
             throw new IllegalArgumentException("Authentication required");
         }
@@ -37,6 +40,7 @@ public class UserController {
     public ResponseEntity<UserProfileResponseDto> updateCurrentUserProfile(
             Principal principal,
             @Valid @RequestBody UserProfileUpdateRequestDto request) {
+        log.debug("Entering updateCurrentUserProfile method with principal={}", principal);
         if (principal == null) {
             throw new IllegalArgumentException("Authentication required");
         }
@@ -48,6 +52,7 @@ public class UserController {
     public ResponseEntity<Void> changePassword(
             Principal principal,
             @Valid @RequestBody ChangePasswordRequestDto request) {
+        log.debug("Entering changePassword method with principal={}", principal);
         if (principal == null) {
             throw new IllegalArgumentException("Authentication required");
         }
@@ -58,6 +63,7 @@ public class UserController {
     @DeleteMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteCurrentUser(Principal principal) {
+        log.debug("Entering deleteCurrentUser method with principal={}", principal);
         if (principal == null) {
             throw new IllegalArgumentException("Authentication required");
         }
@@ -68,6 +74,7 @@ public class UserController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isSelf(authentication, #id)")
     public ResponseEntity<UserProfileResponseDto> getUserById(@PathVariable Long id) {
+        log.debug("Entering getUserById method with id={}", id);
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
@@ -84,6 +91,7 @@ public class UserController {
     public ResponseEntity<UserProfileResponseDto> updateUserStatus(
             @PathVariable Long id,
             @Valid @RequestBody UserStatusUpdateRequestDto request) {
+        log.debug("Entering updateUserStatus method with id={}", id);
         return ResponseEntity.ok(userService.updateUserStatus(id, request));
     }
 }
