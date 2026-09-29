@@ -22,10 +22,9 @@ public class RestaurantSecurity {
 
         Long userId = principal.getId();
 
-        return restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
-                .map(restaurant ->
-                        restaurant.getOwner().getId().equals(userId)
-                )
-                .orElse(false);
+        return restaurantRepository.existsByIdAndOwnerIdAndDeletedAtIsNull(
+                restaurantId,
+                userId
+        );
     }
 }

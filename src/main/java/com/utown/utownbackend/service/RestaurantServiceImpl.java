@@ -7,7 +7,9 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +24,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     private final RestaurantTypeRepository restaurantTypeRepository;
     private final CityRepository cityRepository;
     private final RestaurantWorkingHoursRepository workingHoursRepository;
+    private final S3Service s3Service;
 
     @Transactional
     @Override
@@ -192,8 +195,20 @@ public class RestaurantServiceImpl implements RestaurantService {
                 .toList();
     }
 
+    @Transactional
+    @Override
+    public RestaurantResponseDto uploadRestaurantLogo(Long id, MultipartFile file) throws IOException {
+        Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
+        String logoKey = s3Service.uploadFile(file);
 
+        restaurant.setLogoUrl(logoKey);
+
+        Restaurant savedRestaurant = restaurantRepository.save(restaurant);
+
+        return toDto(savedRestaurant);
+    }
 
     private RestaurantResponseDto toDto(Restaurant restaurant) {
         return new RestaurantResponseDto(

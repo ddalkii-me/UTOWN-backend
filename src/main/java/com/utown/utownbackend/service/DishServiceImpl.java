@@ -12,7 +12,9 @@ import com.utown.utownbackend.repository.RestaurantRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,12 +25,14 @@ public class DishServiceImpl implements DishService {
     final RestaurantRepository restaurantRepository;
     final CategoryRepository categoryRepository;
     final com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository;
+    final S3Service s3Service;
 
-    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository) {
+    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository, S3Service s3Service) {
         this.dishRepository = dishRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.dishOptionGroupRepository = dishOptionGroupRepository;
+        this.s3Service = s3Service;
     }
 
     @Override
@@ -153,6 +157,21 @@ public class DishServiceImpl implements DishService {
         );
         dish.setDeletedAt(null);
         dishRepository.save(dish);
+    }
+
+    @Override
+    @Transactional
+    public DishResponseDto uploadDishImage(Long id, MultipartFile file) throws IOException {
+        Dish dish = dishRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
+
+        String imageKey = s3Service.uploadFile(file);
+
+        dish.setImageUrl(imageKey);
+
+        Dish savedDish = dishRepository.save(dish);
+
+        return toDto(savedDish);
     }
 
     private DishResponseDto toDto(Dish dish) {

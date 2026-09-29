@@ -22,14 +22,10 @@ public class DishSecurity {
 
         Long userId = principal.getId();
 
-        return dishRepository.findByIdAndDeletedAtIsNull(dishId)
-                .map(dish ->
-                        dish.getRestaurant()
-                                .getOwner()
-                                .getId()
-                                .equals(userId)
-                )
-                .orElse(false);
+        return dishRepository.existsByIdAndRestaurantOwnerIdAndDeletedAtIsNull(
+                dishId,
+                userId
+        );
     }
     public boolean isOwnerOfDeletedDish(
             Authentication authentication,
@@ -45,13 +41,9 @@ public class DishSecurity {
 
         Long userId = principal.getId();
 
-        return dishRepository.findByIdAndDeletedAtIsNotNull(dishId)
-                .map(dish ->
-                        dish.getRestaurant()
-                                .getOwner()
-                                .getId()
-                                .equals(userId)
-                )
-                .orElse(false);
+        return dishRepository.existsByIdAndRestaurantOwnerIdAndDeletedAtIsNotNull(
+                dishId,
+                userId
+        );
     }
 }

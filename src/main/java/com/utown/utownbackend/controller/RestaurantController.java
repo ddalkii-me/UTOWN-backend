@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.util.List;
 
@@ -123,5 +125,15 @@ public class RestaurantController {
         restaurantService.deleteRestaurant(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/logo")
+    @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #id)")
+    public ResponseEntity<RestaurantResponseDto> uploadRestaurantLogo(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) throws IOException {
+        RestaurantResponseDto response = restaurantService.uploadRestaurantLogo(id, file);
+        return ResponseEntity.ok(response);
     }
 }
