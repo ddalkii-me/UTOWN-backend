@@ -24,7 +24,11 @@ public class SocketIOConnectionListener {
     ) {
         this.jwtUtil = jwtUtil;
 
-        socketIOServer.addConnectListener(client -> handleConnection(client));
+        socketIOServer.addConnectListener(this::handleConnection);
+
+        socketIOServer.addDisconnectListener(client ->
+                log.info("Socket.IO client {} disconnected", client.getSessionId())
+        );
     }
 
     private void handleConnection(SocketIOClient client) {

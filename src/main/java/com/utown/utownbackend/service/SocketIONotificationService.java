@@ -4,8 +4,10 @@ import com.socketio4j.socketio.SocketIOServer;
 import com.utown.utownbackend.util.SocketIOEvents;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @ConditionalOnProperty(
         name = "socketio.enabled",
         havingValue = "true",
@@ -38,8 +40,17 @@ public class SocketIONotificationService {
 
         String room = "user:" + userId;
 
-        socketIOServer
-                .getRoomOperations(room)
-                .sendEvent(event, data);
+        try {
+            socketIOServer
+                    .getRoomOperations(room)
+                    .sendEvent(event, data);
+        } catch (Exception ex) {
+            log.warn(
+                    "Failed to send Socket.IO event '{}' to user {}: {}",
+                    event,
+                    userId,
+                    ex.getMessage()
+            );
+        }
     }
 }
