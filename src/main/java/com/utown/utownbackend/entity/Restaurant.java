@@ -58,6 +58,12 @@ public class Restaurant extends BaseEntity {
     @Column(nullable = false)
     private RestaurantStatus status;
 
+    @Column(name = "average_rating", precision = 3, scale = 2)
+    private BigDecimal averageRating = BigDecimal.ZERO;
+
+    @Column(name = "delivery_time_minutes")
+    private Integer deliveryTimeMinutes = 30;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }

@@ -219,7 +219,9 @@ public class RestaurantServiceImpl implements RestaurantService {
                 restaurant.getLatitude(),
                 restaurant.getLongitude(),
                 restaurant.getMinimumOrderAmount(),
-                restaurant.getStatus()
+                restaurant.getStatus(),
+                restaurant.getAverageRating(),
+                restaurant.getDeliveryTimeMinutes()
         );
     }
 }

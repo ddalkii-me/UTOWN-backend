@@ -218,7 +218,8 @@ public class TestDataFactory {
                 "Restaurant Description", "Restaurant Address 123", "02-123-4567",
                 "http://example.com/logo.png",
                 new BigDecimal("37.4979"), new BigDecimal("127.0276"),
-                new BigDecimal("10000"), RestaurantStatus.OPEN
+                new BigDecimal("10000"), RestaurantStatus.OPEN,
+                new BigDecimal("0.0"), 30
         );
     }
 

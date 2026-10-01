@@ -29,4 +29,7 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
     Optional<Rating> findByIdAndDeletedAtIsNull(
             Long id
     );
+
+    @org.springframework.data.jpa.repository.Query("SELECT AVG(r.score) FROM Rating r WHERE r.restaurant.id = :restaurantId AND r.deletedAt IS NULL")
+    Double getAverageScoreByRestaurantId(@org.springframework.data.repository.query.Param("restaurantId") Long restaurantId);
 }
