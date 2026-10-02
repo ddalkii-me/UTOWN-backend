@@ -6,6 +6,7 @@ import com.utown.utownbackend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,7 +25,8 @@ public class RestaurantServiceImpl implements RestaurantService {
     private final RestaurantTypeRepository restaurantTypeRepository;
     private final CityRepository cityRepository;
     private final RestaurantWorkingHoursRepository workingHoursRepository;
-    private final S3Service s3Service;
+    private final FileStorageService fileStorageService;
+    private final RestaurantLogoUpdateService restaurantLogoUpdateService;
 
     @Transactional
     @Override
@@ -195,19 +197,12 @@ public class RestaurantServiceImpl implements RestaurantService {
                 .toList();
     }
 
-    @Transactional
     @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public RestaurantResponseDto uploadRestaurantLogo(Long id, MultipartFile file) throws IOException {
-        Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
+        String logoKey = fileStorageService.uploadFile(file);
 
-        String logoKey = s3Service.uploadFile(file);
-
-        restaurant.setLogoUrl(logoKey);
-
-        Restaurant savedRestaurant = restaurantRepository.save(restaurant);
-
-        return toDto(savedRestaurant);
+        return restaurantLogoUpdateService.updateLogoUrl(id, logoKey);
     }
 
     private RestaurantResponseDto toDto(Restaurant restaurant) {

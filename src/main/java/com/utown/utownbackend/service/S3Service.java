@@ -1,6 +1,7 @@
 package com.utown.utownbackend.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -11,7 +12,12 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Service
-public class S3Service {
+@ConditionalOnProperty(
+        name = "aws.s3.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
+public class S3Service implements FileStorageService {
 
     private final S3Client s3Client;
     private final String bucketName;
@@ -24,6 +30,7 @@ public class S3Service {
         this.bucketName = bucketName;
     }
 
+    @Override
     public String uploadFile(MultipartFile file) throws IOException {
         String fileName = UUID.randomUUID() + "-" + file.getOriginalFilename();
 

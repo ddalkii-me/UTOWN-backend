@@ -25,14 +25,17 @@ public class DishServiceImpl implements DishService {
     final RestaurantRepository restaurantRepository;
     final CategoryRepository categoryRepository;
     final com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository;
-    final S3Service s3Service;
+    final FileStorageService fileStorageService;
+    final DishImageUpdateService dishImageUpdateService;
 
-    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository, S3Service s3Service) {
+    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository, FileStorageService fileStorageService,
+                           DishImageUpdateService dishImageUpdateService) {
         this.dishRepository = dishRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.dishOptionGroupRepository = dishOptionGroupRepository;
-        this.s3Service = s3Service;
+        this.fileStorageService = fileStorageService;
+        this.dishImageUpdateService = dishImageUpdateService;
     }
 
     @Override
@@ -160,18 +163,10 @@ public class DishServiceImpl implements DishService {
     }
 
     @Override
-    @Transactional
     public DishResponseDto uploadDishImage(Long id, MultipartFile file) throws IOException {
-        Dish dish = dishRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
+        String imageKey = fileStorageService.uploadFile(file);
 
-        String imageKey = s3Service.uploadFile(file);
-
-        dish.setImageUrl(imageKey);
-
-        Dish savedDish = dishRepository.save(dish);
-
-        return toDto(savedDish);
+        return dishImageUpdateService.updateImageUrl(id, imageKey);
     }
 
     private DishResponseDto toDto(Dish dish) {
