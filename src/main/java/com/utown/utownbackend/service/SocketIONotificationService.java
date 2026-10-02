@@ -1,24 +1,27 @@
 package com.utown.utownbackend.service;
 
+import java.util.Map;
+
 import com.socketio4j.socketio.SocketIOServer;
 import com.utown.utownbackend.util.SocketIOEvents;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Slf4j
-@ConditionalOnProperty(
-        name = "socketio.enabled",
-        havingValue = "true",
-        matchIfMissing = true
-)
 public class SocketIONotificationService {
 
     private final SocketIOServer socketIOServer;
+    private final ObjectMapper objectMapper;
 
-    public SocketIONotificationService(SocketIOServer socketIOServer) {
-        this.socketIOServer = socketIOServer;
+    public SocketIONotificationService(
+            ObjectProvider<SocketIOServer> socketIOServerProvider,
+            ObjectMapper objectMapper
+    ) {
+        this.socketIOServer = socketIOServerProvider.getIfAvailable();
+        this.objectMapper = objectMapper;
     }
 
     public void sendNotification(Long userId, Object notification) {
@@ -34,16 +37,19 @@ public class SocketIONotificationService {
     }
 
     private void sendToUser(Long userId, String event, Object data) {
-        if (userId == null || data == null) {
+        if (socketIOServer == null || userId == null || data == null) {
             return;
         }
 
         String room = "user:" + userId;
 
         try {
+            Map<String, Object> payload =
+                    objectMapper.convertValue(data, Map.class);
+
             socketIOServer
                     .getRoomOperations(room)
-                    .sendEvent(event, data);
+                    .sendEvent(event, payload);
         } catch (Exception ex) {
             log.warn(
                     "Failed to send Socket.IO event '{}' to user {}: {}",
