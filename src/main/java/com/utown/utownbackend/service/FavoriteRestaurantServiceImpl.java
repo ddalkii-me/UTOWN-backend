@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -30,6 +32,7 @@ public class FavoriteRestaurantServiceImpl
     public FavoriteRestaurantResponseDto addFavorite(
             Long userId,
             Long restaurantId) {
+        log.info("Executing addFavorite with userId={}, restaurantId={}", userId, restaurantId);
 
         User user = userRepository
                 .findByIdAndDeletedAtIsNull(userId)
@@ -87,6 +90,7 @@ public class FavoriteRestaurantServiceImpl
     @Transactional(readOnly = true)
     public List<FavoriteRestaurantResponseDto> getFavoritesByUser(
             Long userId) {
+        log.info("Executing getFavoritesByUser with userId={}", userId);
 
         userRepository
                 .findByIdAndDeletedAtIsNull(userId)
@@ -107,6 +111,7 @@ public class FavoriteRestaurantServiceImpl
     public void removeFavorite(
             Long userId,
             Long restaurantId) {
+        log.info("Executing removeFavorite with userId={}, restaurantId={}", userId, restaurantId);
 
         FavoriteRestaurant favoriteRestaurant =
                 favoriteRestaurantRepository

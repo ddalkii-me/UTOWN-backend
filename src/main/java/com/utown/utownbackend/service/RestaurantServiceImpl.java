@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,6 +28,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Transactional
     @Override
     public RestaurantResponseDto createRestaurant(RestaurantRequestDto request) {
+        log.info("Executing createRestaurant");
 
         User owner = userRepository.findById(request.ownerId())
                 .orElseThrow(() -> new EntityNotFoundException("Owner not found"));
@@ -58,6 +61,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 
     @Override
     public List<RestaurantResponseDto> getAllRestaurants() {
+        log.info("Executing getAllRestaurants");
 
         List<Restaurant> restaurants =
                 restaurantRepository.findAllByDeletedAtIsNull();
@@ -69,6 +73,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 
     @Override
     public RestaurantResponseDto getRestaurantById(Long id) {
+        log.info("Executing getRestaurantById with id={}", id);
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
@@ -80,6 +85,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     public RestaurantResponseDto updateRestaurant(
             Long id,
             RestaurantOwnerUpdateRequestDto request) {
+        log.info("Executing updateRestaurant with id={}", id);
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
@@ -111,6 +117,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     public RestaurantResponseDto updateRestaurantAsAdmin(
             Long id,
             RestaurantAdminUpdateRequestDto request) {
+        log.info("Executing updateRestaurantAsAdmin with id={}", id);
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
@@ -145,6 +152,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Transactional
     @Override
     public void deleteRestaurant(Long id) {
+        log.info("Executing deleteRestaurant with id={}", id);
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
@@ -157,6 +165,7 @@ public class RestaurantServiceImpl implements RestaurantService {
     @Transactional
     @Override
     public void updateWorkingHourForDay(Long restaurantId, DayOfWeek dayOfWeek, WorkingHoursDto dto) {
+        log.info("Executing updateWorkingHourForDay with restaurantId={}, dayOfWeek={}", restaurantId, dayOfWeek);
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
@@ -176,6 +185,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 
     @Override
     public List<WorkingHoursDto> getWorkingHours(Long restaurantId) {
+        log.info("Executing getWorkingHours with restaurantId={}", restaurantId);
 
         restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));

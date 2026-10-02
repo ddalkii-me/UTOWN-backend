@@ -14,7 +14,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class OrderController {
     public ResponseEntity<OrderResponseDto> createOrder(
             @Valid @RequestBody OrderRequestDto request
     ) {
+        log.debug("Entering createOrder method");
         Long resolvedUserId = request.userId();
         if (resolvedUserId == null) {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -46,6 +49,7 @@ public class OrderController {
     public ResponseEntity<OrderResponseDto> checkout(
             @Valid @RequestBody CheckoutRequestDto request
     ) {
+        log.debug("Entering checkout method");
         Long resolvedUserId = request.userId();
         if (resolvedUserId == null) {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -83,6 +87,7 @@ public class OrderController {
     public ResponseEntity<OrderResponseDto> getOrderById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getOrderById method with id={}", id);
         return ResponseEntity.ok(orderService.getOrderById(id));
     }
 
@@ -92,6 +97,7 @@ public class OrderController {
             @PathVariable Long id,
             @Valid @RequestBody OrderAcceptRequestDto request
     ) {
+        log.debug("Entering acceptOrder method with id={}", id);
         return ResponseEntity.ok(orderService.acceptOrder(id, request));
     }
 
@@ -100,6 +106,7 @@ public class OrderController {
     public ResponseEntity<OrderResponseDto> startPreparation(
             @PathVariable Long id
     ) {
+        log.debug("Entering startPreparation method with id={}", id);
         return ResponseEntity.ok(orderService.startPreparation(id));
     }
 
@@ -116,6 +123,7 @@ public class OrderController {
     public ResponseEntity<OrderResponseDto> completeOrder(
             @PathVariable Long id
     ) {
+        log.debug("Entering completeOrder method with id={}", id);
         return ResponseEntity.ok(orderService.completeOrder(id));
     }
 
@@ -134,6 +142,7 @@ public class OrderController {
             @PathVariable Long id,
             @Valid @RequestBody OrderDeclineRequestDto request
     ) {
+        log.debug("Entering declineOrder method with id={}", id);
         return ResponseEntity.ok(orderService.declineOrder(id, request));
     }
 }

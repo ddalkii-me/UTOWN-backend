@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class DishServiceImpl implements DishService {
 
@@ -34,6 +36,7 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     public DishResponseDto createDish(DishRequestDto request) {
+        log.info("Executing createDish");
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(request.restaurantId()).orElseThrow(
                 () -> new EntityNotFoundException("Restaurant not found")
@@ -65,11 +68,13 @@ public class DishServiceImpl implements DishService {
 
     @Override
     public List<DishResponseDto> getDishes(DishStatus status, boolean deleted) {
+        log.info("Executing getDishes with status={}, deleted={}", status, deleted);
         return getDishes(null, null, status, deleted);
     }
 
     @Override
     public List<DishResponseDto> getDishes(Long restaurantId, Long categoryId, DishStatus status, boolean deleted) {
+        log.info("Executing getDishes with restaurantId={}, categoryId={}, status={}, deleted={}", restaurantId, categoryId, status, deleted);
         List<Dish> dishes;
         if (deleted) {
             dishes = dishRepository.findAllByDeletedAtIsNotNull();
@@ -93,6 +98,7 @@ public class DishServiceImpl implements DishService {
 
     @Override
     public DishResponseDto getDishById(Long id) {
+        log.info("Executing getDishById with id={}", id);
         Dish dish = dishRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
 
@@ -103,6 +109,7 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     public DishResponseDto updateDish(Long id, DishRequestDto request) {
+        log.info("Executing updateDish with id={}", id);
         Dish dish = dishRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(request.restaurantId()).orElseThrow(
@@ -134,6 +141,7 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     public void deleteDish(Long id) {
+        log.info("Executing deleteDish with id={}", id);
         if (dishOptionGroupRepository.existsByDishIdAndDeletedAtIsNull(id)) {
             throw new IllegalStateException("Cannot delete Dish while it has active Option Groups");
         }
@@ -148,6 +156,7 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     public void restoreDish(Long id) {
+        log.info("Executing restoreDish with id={}", id);
         Dish dish = dishRepository.findByIdAndDeletedAtIsNotNull(id).orElseThrow(
                 () -> new EntityNotFoundException("Deleted dish not found")
         );

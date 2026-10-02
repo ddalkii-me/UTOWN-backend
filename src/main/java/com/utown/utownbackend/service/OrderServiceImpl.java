@@ -5,6 +5,7 @@ import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import com.utown.utownbackend.security.CustomUserDetails;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto createOrder(OrderRequestDto request) {
+        log.info("Executing createOrder");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails principal) {
             if (principal.getRole() == UserRole.CUSTOMER && !principal.getId().equals(request.userId())) {
@@ -246,6 +248,7 @@ public class OrderServiceImpl implements OrderService {
             List<OrderStatus> statuses,
             Authentication authentication
     ) {
+        log.info("Executing getOrders with restaurantId={}, userId={}, statuses={}", restaurantId, userId, statuses);
         Specification<Order> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -316,6 +319,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponseDto getOrderById(Long id) {
+        log.info("Executing getOrderById with id={}", id);
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
@@ -325,7 +329,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto acceptOrder(Long id, OrderAcceptRequestDto request) {
-        Order order = orderRepository.findById(id)
+        log.info("Executing acceptOrder with id={}", id);
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.PENDING) {
@@ -352,7 +357,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto startPreparation(Long id) {
-        Order order = orderRepository.findById(id)
+        log.info("Executing startPreparation with id={}", id);
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.ACCEPTED) {
@@ -376,7 +382,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto completeOrder(Long id) {
-        Order order = orderRepository.findById(id)
+        log.info("Executing completeOrder with id={}", id);
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.DELIVERED) {
@@ -399,7 +406,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDto declineOrder(Long id, OrderDeclineRequestDto request) {
-        Order order = orderRepository.findById(id)
+        log.info("Executing declineOrder with id={}", id);
+        Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.PENDING) {

@@ -35,6 +35,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
 
     @Override
     public DeliveryAssignmentResponseDto createAssignment(DeliveryAssignmentRequestDto request) {
+        log.info("Executing createAssignment");
         log.info("Creating delivery assignment for order ID: {} and rider ID: {}", request.orderId(), request.riderId());
 
         Order order = orderRepository.findById(request.orderId())
@@ -83,6 +84,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
     @Override
     @Transactional(readOnly = true)
     public DeliveryAssignmentResponseDto getAssignmentById(Long id) {
+        log.info("Executing getAssignmentById with id={}", id);
         return deliveryAssignmentRepository.findById(id)
                 .map(this::mapToResponseDto)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery assignment not found with id: " + id));
@@ -91,6 +93,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
     @Override
     @Transactional(readOnly = true)
     public List<DeliveryAssignmentResponseDto> getAssignments(Long riderId, Long orderId, DeliveryAssignmentStatus status) {
+        log.info("Executing getAssignments with riderId={}, orderId={}, status={}", riderId, orderId, status);
         List<DeliveryAssignment> list;
 
         if (riderId != null && orderId != null && status != null) {
@@ -118,6 +121,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
 
     @Override
     public DeliveryAssignmentResponseDto acceptAssignment(Long id) {
+        log.info("Executing acceptAssignment with id={}", id);
         DeliveryAssignment assignment = deliveryAssignmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery assignment not found with id: " + id));
 
@@ -135,6 +139,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
 
     @Override
     public DeliveryAssignmentResponseDto pickupDelivery(Long id) {
+        log.info("Executing pickupDelivery with id={}", id);
         DeliveryAssignment assignment = deliveryAssignmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery assignment not found with id: " + id));
 
@@ -158,6 +163,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
 
     @Override
     public DeliveryAssignmentResponseDto completeDelivery(Long id) {
+        log.info("Executing completeDelivery with id={}", id);
         DeliveryAssignment assignment = deliveryAssignmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery assignment not found with id: " + id));
 
@@ -188,6 +194,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
 
     @Override
     public DeliveryAssignmentResponseDto cancelAssignment(Long id) {
+        log.info("Executing cancelAssignment with id={}", id);
         DeliveryAssignment assignment = deliveryAssignmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Delivery assignment not found with id: " + id));
 

@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class CategoryController {
     )
     public ResponseEntity<CategoryResponseDto> createCategory(
             @Valid @RequestBody CategoryRequestDto request) {
+        log.debug("Entering createCategory method");
 
         CategoryResponseDto response = categoryService.createCategory(request);
 
@@ -44,6 +47,7 @@ public class CategoryController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<CategoryResponseDto> getCategoryById(
             @PathVariable Long id) {
+        log.debug("Entering getCategoryById method with id={}", id);
 
         CategoryResponseDto response =
                 categoryService.getCategoryById(id);
@@ -57,6 +61,7 @@ public class CategoryController {
     public ResponseEntity<CategoryResponseDto> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody CategoryRequestDto request) {
+        log.debug("Entering updateCategory method with id={}", id);
 
         CategoryResponseDto response =
                 categoryService.updateCategory(id, request);
@@ -69,6 +74,7 @@ public class CategoryController {
     )
     public ResponseEntity<Void> deleteCategory(
             @PathVariable Long id) {
+        log.debug("Entering deleteCategory method with id={}", id);
 
         categoryService.deleteCategory(id);
 

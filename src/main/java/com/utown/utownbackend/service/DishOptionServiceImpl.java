@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DishOptionServiceImpl implements DishOptionService {
@@ -25,6 +27,7 @@ public class DishOptionServiceImpl implements DishOptionService {
     @Override
     @Transactional
     public DishOptionResponseDto createDishOption(DishOptionRequestDto request) {
+        log.info("Executing createDishOption");
         DishOptionGroup group = dishOptionGroupRepository.findByIdAndDeletedAtIsNull(request.optionGroupId())
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
 
@@ -41,6 +44,7 @@ public class DishOptionServiceImpl implements DishOptionService {
 
     @Override
     public List<DishOptionResponseDto> getAllDishOptions() {
+        log.info("Executing getAllDishOptions");
         return dishOptionRepository.findAllByDeletedAtIsNullOrderBySortOrderAsc().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -48,6 +52,7 @@ public class DishOptionServiceImpl implements DishOptionService {
 
     @Override
     public List<DishOptionResponseDto> getDishOptionsByGroupId(Long optionGroupId) {
+        log.info("Executing getDishOptionsByGroupId with optionGroupId={}", optionGroupId);
         dishOptionGroupRepository.findByIdAndDeletedAtIsNull(optionGroupId)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
 
@@ -58,6 +63,7 @@ public class DishOptionServiceImpl implements DishOptionService {
 
     @Override
     public DishOptionResponseDto getDishOptionById(Long id) {
+        log.info("Executing getDishOptionById with id={}", id);
         return dishOptionRepository.findByIdAndDeletedAtIsNull(id)
                 .map(this::toDto)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option not found"));
@@ -66,6 +72,7 @@ public class DishOptionServiceImpl implements DishOptionService {
     @Override
     @Transactional
     public DishOptionResponseDto updateDishOption(Long id, DishOptionRequestDto request) {
+        log.info("Executing updateDishOption with id={}", id);
         DishOption option = dishOptionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option not found"));
 
@@ -85,6 +92,7 @@ public class DishOptionServiceImpl implements DishOptionService {
     @Override
     @Transactional
     public void deleteDishOption(Long id) {
+        log.info("Executing deleteDishOption with id={}", id);
         DishOption option = dishOptionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option not found"));
         option.setDeletedAt(LocalDateTime.now());

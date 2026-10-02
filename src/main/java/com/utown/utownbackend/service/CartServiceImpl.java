@@ -33,6 +33,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional(readOnly = true)
     public CartResponseDto getCart(Long userId) {
+        log.info("Executing getCart with userId={}", userId);
         User user = findActiveUser(userId);
 
         Optional<Cart> cartOpt = cartRepository.findByUserId(user.getId());
@@ -51,6 +52,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponseDto addItemToCart(Long userId, AddToCartRequestDto request, boolean clearExisting) {
+        log.info("Executing addItemToCart with userId={}, clearExisting={}", userId, clearExisting);
         User user = findActiveUser(userId);
 
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(request.restaurantId())
@@ -177,6 +179,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponseDto updateCartItemQuantity(Long userId, Long cartItemId, UpdateCartItemRequestDto request) {
+        log.info("Executing updateCartItemQuantity with userId={}, cartItemId={}", userId, cartItemId);
         findActiveUser(userId);
         Cart cart = findActiveCartOrThrow(userId);
 
@@ -206,6 +209,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartResponseDto removeCartItem(Long userId, Long cartItemId) {
+        log.info("Executing removeCartItem with userId={}, cartItemId={}", userId, cartItemId);
         findActiveUser(userId);
         Cart cart = findActiveCartOrThrow(userId);
 
@@ -230,6 +234,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void clearCart(Long userId) {
+        log.info("Executing clearCart with userId={}", userId);
         User user = findActiveUser(userId);
 
         Optional<Cart> cartOpt = cartRepository.findByUserId(user.getId());

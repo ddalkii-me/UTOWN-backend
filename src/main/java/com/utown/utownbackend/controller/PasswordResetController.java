@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth/password-reset")
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class PasswordResetController {
     @PostMapping("/request")
     public ResponseEntity<PasswordResetRequestResponseDto> requestPasswordReset(
             @Valid @RequestBody PasswordResetRequestDto request) {
+        log.debug("Entering requestPasswordReset method");
         PasswordResetRequestResponseDto response = passwordResetService.requestPasswordReset(request);
         return ResponseEntity.ok(response);
     }
@@ -33,6 +36,7 @@ public class PasswordResetController {
     @PostMapping("/verify")
     public ResponseEntity<PasswordResetVerifyResponseDto> verifyPasswordReset(
             @Valid @RequestBody PasswordResetVerifyDto request) {
+        log.debug("Entering verifyPasswordReset method");
         PasswordResetVerifyResponseDto response = passwordResetService.verifyPasswordReset(request);
         return ResponseEntity.ok(response);
     }
@@ -40,6 +44,7 @@ public class PasswordResetController {
     @PostMapping("/confirm")
     public ResponseEntity<Map<String, String>> confirmPasswordReset(
             @Valid @RequestBody PasswordResetConfirmDto request) {
+        log.debug("Entering confirmPasswordReset method");
         passwordResetService.confirmPasswordReset(request);
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
     }

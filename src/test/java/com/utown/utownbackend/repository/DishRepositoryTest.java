@@ -93,6 +93,20 @@ class DishRepositoryTest {
     }
 
     @Test
+    @DisplayName("findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc - eagerly fetches restaurant and category")
+    void findAllByRestaurantId_eagerlyFetchesAssociations() {
+        createDish("Active Dish 1", DishStatus.AVAILABLE, null);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Dish> result = dishRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderBySortOrderAsc(restaurant.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getRestaurant())).isTrue();
+        assertThat(org.hibernate.Hibernate.isInitialized(result.get(0).getCategory())).isTrue();
+    }
+
+    @Test
     @DisplayName("findAllByStatusAndDeletedAtIsNull - filters by status and excludes deleted")
     void findAllByStatusAndDeletedAtIsNull_filtersProperly() {
         createDish("Available Dish", DishStatus.AVAILABLE, null);
