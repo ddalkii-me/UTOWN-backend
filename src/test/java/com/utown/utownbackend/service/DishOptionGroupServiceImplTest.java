@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.DishOptionGroupRequestDto;
 import com.utown.utownbackend.dto.DishOptionGroupResponseDto;
 import com.utown.utownbackend.entity.Dish;
 import com.utown.utownbackend.entity.DishOptionGroup;
+import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.repository.DishOptionGroupRepository;
 import com.utown.utownbackend.repository.DishOptionRepository;
 import com.utown.utownbackend.repository.DishRepository;
@@ -17,6 +18,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.utown.utownbackend.util.TestDataFactory;
+import org.springframework.cache.CacheManager;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -40,13 +43,20 @@ class DishOptionGroupServiceImplTest {
     @InjectMocks
     private DishOptionGroupServiceImpl dishOptionGroupService;
 
+    @Mock
+    private CacheManager cacheManager;
+
     private Dish dish;
     private DishOptionGroup dishOptionGroup;
     private DishOptionGroupRequestDto requestDto;
 
     @BeforeEach
     void setUp() {
+        Restaurant restaurant = new Restaurant();
+        restaurant.setId(1L);
         dish = TestDataFactory.createDish(1L, "Test Dish", null, null);
+        dish.setRestaurant(restaurant);
+
         dishOptionGroup = TestDataFactory.createDishOptionGroup(1L, "Size", dish);
 
         requestDto = new DishOptionGroupRequestDto(1L, "Size", true, 1, 1, 1);

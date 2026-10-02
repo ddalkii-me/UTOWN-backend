@@ -2,9 +2,7 @@ package com.utown.utownbackend.service;
 
 import com.utown.utownbackend.dto.DishOptionRequestDto;
 import com.utown.utownbackend.dto.DishOptionResponseDto;
-import com.utown.utownbackend.entity.DishOption;
-import com.utown.utownbackend.entity.DishOptionGroup;
-import com.utown.utownbackend.entity.DishOptionStatus;
+import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.DishOptionGroupRepository;
 import com.utown.utownbackend.repository.DishOptionRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -17,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.utown.utownbackend.util.TestDataFactory;
+import org.springframework.cache.CacheManager;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -38,16 +38,45 @@ class DishOptionServiceImplTest {
     @InjectMocks
     private DishOptionServiceImpl dishOptionService;
 
+    @Mock
+    private CacheManager cacheManager;
+
     private DishOptionGroup group;
     private DishOption option;
     private DishOptionRequestDto requestDto;
 
     @BeforeEach
     void setUp() {
-        group = TestDataFactory.createDishOptionGroup(1L, "Size", null);
-        option = TestDataFactory.createDishOption(1L, "Large", group);
+        Restaurant restaurant = new Restaurant();
+        restaurant.setId(1L);
 
-        requestDto = new DishOptionRequestDto("Large", 1L, BigDecimal.valueOf(100), 1, DishOptionStatus.AVAILABLE);
+        Dish dish = TestDataFactory.createDish(
+                1L,
+                "Test Dish",
+                null,
+                null
+        );
+        dish.setRestaurant(restaurant);
+
+        group = TestDataFactory.createDishOptionGroup(
+                1L,
+                "Size",
+                dish
+        );
+
+        option = TestDataFactory.createDishOption(
+                1L,
+                "Large",
+                group
+        );
+
+        requestDto = new DishOptionRequestDto(
+                "Large",
+                1L,
+                BigDecimal.valueOf(100),
+                1,
+                DishOptionStatus.AVAILABLE
+        );
     }
 
     // ── createDishOption ─────────────────────────────────────────────

@@ -10,8 +10,12 @@ import com.utown.utownbackend.repository.RestaurantRepository;
 import com.utown.utownbackend.exception.ResourceConflictException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.cache.CacheManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +30,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository categoryRepository;
     private final RestaurantRepository restaurantRepository;
     private final DishRepository dishRepository;
+    private final CacheManager cacheManager;
 
     @Transactional
     @Override
@@ -44,6 +49,10 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category savedCategory = categoryRepository.save(category);
 
+        evictCacheEntry("categoriesByRestaurant", "all");
+        evictCacheEntry("categoriesByRestaurant", request.restaurantId());
+        evictCacheEntry("restaurantMenus", request.restaurantId());
+
         return new CategoryResponseDto(
                 savedCategory.getId(),
                 savedCategory.getRestaurant().getId(),
@@ -54,12 +63,14 @@ public class CategoryServiceImpl implements CategoryService {
         );
     }
 
+    @Cacheable(cacheNames = "categoriesByRestaurant", key = "'all'")
     @Override
     public List<CategoryResponseDto> getAllCategories() {
         log.info("Executing getAllCategories");
         return getAllCategories(null);
     }
 
+    @Cacheable(cacheNames = "categoriesByRestaurant", key = "#p0 == null ? 'all' : #p0")
     @Override
     public List<CategoryResponseDto> getAllCategories(Long restaurantId) {
         log.info("Executing getAllCategories with restaurantId={}", restaurantId);
@@ -82,6 +93,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .toList();
     }
 
+    @Cacheable(cacheNames = "categoriesById", key = "#p0")
     @Override
     public CategoryResponseDto getCategoryById(Long id) {
         log.info("Executing getCategoryById with id={}", id);
@@ -109,6 +121,8 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
+        Long previousRestaurantId = category.getRestaurant().getId();
+
         Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
 
@@ -119,6 +133,13 @@ public class CategoryServiceImpl implements CategoryService {
         category.setPriority(request.priority());
 
         Category updatedCategory = categoryRepository.save(category);
+
+        evictCacheEntry("categoriesByRestaurant", "all");
+        evictCacheEntry("categoriesByRestaurant", previousRestaurantId);
+        evictCacheEntry("categoriesByRestaurant", restaurant.getId());
+        evictCacheEntry("categoriesById", id);
+        evictCacheEntry("restaurantMenus", previousRestaurantId);
+        evictCacheEntry("restaurantMenus", restaurant.getId());
 
         return new CategoryResponseDto(
                 updatedCategory.getId(),
@@ -138,6 +159,8 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
+        Long restaurantId = category.getRestaurant().getId();
+
         if (dishRepository.existsByCategoryIdAndDeletedAtIsNull(id)) {
             throw new ResourceConflictException("Cannot delete category because it still has active dishes.");
         }
@@ -145,5 +168,20 @@ public class CategoryServiceImpl implements CategoryService {
         category.setDeletedAt(LocalDateTime.now());
 
         categoryRepository.save(category);
+
+        evictCacheEntry("categoriesByRestaurant", "all");
+        evictCacheEntry("categoriesByRestaurant", restaurantId);
+        evictCacheEntry("categoriesById", id);
+        evictCacheEntry("restaurantMenus", restaurantId);
+    }
+
+    private void evictCacheEntry(String cacheName, Object key) {
+        if (key == null) {
+            return;
+        }
+        var cache = cacheManager.getCache(cacheName);
+        if (cache != null) {
+            cache.evict(key);
+        }
     }
 }

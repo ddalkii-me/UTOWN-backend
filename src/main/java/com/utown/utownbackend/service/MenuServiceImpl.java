@@ -7,6 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ public class MenuServiceImpl implements MenuService {
     private final DishOptionRepository dishOptionRepository;
 
     @Override
+    @Cacheable(cacheNames = "restaurantMenus", key = "#p0")
     public RestaurantMenuResponseDto getRestaurantMenu(Long restaurantId) {
         log.info("Executing getRestaurantMenu with restaurantId={}", restaurantId);
         Restaurant restaurant = restaurantRepository.findByIdAndDeletedAtIsNull(restaurantId)
