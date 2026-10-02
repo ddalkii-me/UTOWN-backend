@@ -1,6 +1,7 @@
 package com.utown.utownbackend.repository;
 
 import com.utown.utownbackend.entity.Notification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     long countByUserIdAndIsReadFalse(Long userId);
 
     Optional<Notification> findByIdAndUserId(Long id, Long userId);
+
+    @EntityGraph(attributePaths = {"user"})
+    Optional<Notification> findByIdWithUser(Long id);
 
     void deleteByUserId(Long userId);
 

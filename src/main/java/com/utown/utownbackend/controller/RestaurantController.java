@@ -14,7 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/restaurants")
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class RestaurantController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantResponseDto> createRestaurant(
             @Valid @RequestBody RestaurantRequestDto request) {
+        log.debug("Entering createRestaurant method");
 
         RestaurantResponseDto response =
                 restaurantService.createRestaurant(request);
@@ -39,6 +42,7 @@ public class RestaurantController {
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<RestaurantResponseDto>> getAllRestaurants() {
+        log.debug("Entering getAllRestaurants method");
 
         List<RestaurantResponseDto> restaurants =
                 restaurantService.getAllRestaurants();
@@ -50,6 +54,7 @@ public class RestaurantController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantResponseDto> getRestaurantById(
             @PathVariable Long id) {
+        log.debug("Entering getRestaurantById method with id={}", id);
 
         RestaurantResponseDto response =
                 restaurantService.getRestaurantById(id);
@@ -61,6 +66,7 @@ public class RestaurantController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantMenuResponseDto> getRestaurantMenu(
             @PathVariable Long id) {
+        log.debug("Entering getRestaurantMenu method with id={}", id);
 
         RestaurantMenuResponseDto response =
                 menuService.getRestaurantMenu(id);
@@ -73,6 +79,7 @@ public class RestaurantController {
     public ResponseEntity<List<WorkingHoursDto>> getWorkingHoursById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getWorkingHoursById method with id={}", id);
         List<WorkingHoursDto> response = restaurantService.getWorkingHours(id);
 
         return ResponseEntity.ok(response);
@@ -87,6 +94,7 @@ public class RestaurantController {
             @PathVariable DayOfWeek dayOfWeek,
             @Valid @RequestBody WorkingHoursDto request
     ) {
+        log.debug("Entering updateWorkingHourForDay method with id={}, dayOfWeek={}", id, dayOfWeek);
         restaurantService.updateWorkingHourForDay(id, dayOfWeek, request);
         return ResponseEntity.noContent().build();
     }
@@ -96,6 +104,7 @@ public class RestaurantController {
     public ResponseEntity<RestaurantResponseDto> updateRestaurant(
             @PathVariable Long id,
             @Valid @RequestBody RestaurantOwnerUpdateRequestDto request) {
+        log.debug("Entering updateRestaurant method with id={}", id);
 
         RestaurantResponseDto response =
                 restaurantService.updateRestaurant(id, request);
@@ -108,6 +117,7 @@ public class RestaurantController {
     public ResponseEntity<RestaurantResponseDto> updateRestaurantAsAdmin(
             @PathVariable Long id,
             @Valid @RequestBody RestaurantAdminUpdateRequestDto request) {
+        log.debug("Entering updateRestaurantAsAdmin method with id={}", id);
 
         RestaurantResponseDto response =
                 restaurantService.updateRestaurantAsAdmin(id, request);
@@ -121,6 +131,7 @@ public class RestaurantController {
     )
     public ResponseEntity<Void> deleteRestaurant(
             @PathVariable Long id) {
+        log.debug("Entering deleteRestaurant method with id={}", id);
 
         restaurantService.deleteRestaurant(id);
 

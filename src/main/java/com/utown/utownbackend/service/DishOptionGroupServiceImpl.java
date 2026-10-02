@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DishOptionGroupServiceImpl implements DishOptionGroupService {
@@ -26,6 +28,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
     @Override
     @Transactional
     public DishOptionGroupResponseDto createDishOptionGroup(DishOptionGroupRequestDto request) {
+        log.info("Executing createDishOptionGroup");
         if (request.minSelections() != null && request.maxSelections() != null && request.minSelections() > request.maxSelections()) {
             throw new IllegalArgumentException("minSelections cannot be greater than maxSelections");
         }
@@ -47,6 +50,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
 
     @Override
     public List<DishOptionGroupResponseDto> getAllDishOptionGroups() {
+        log.info("Executing getAllDishOptionGroups");
         return dishOptionGroupRepository.findAllByDeletedAtIsNullOrderBySortOrderAsc().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -54,6 +58,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
 
     @Override
     public List<DishOptionGroupResponseDto> getDishOptionGroupsByDishId(Long dishId) {
+        log.info("Executing getDishOptionGroupsByDishId with dishId={}", dishId);
         dishRepository.findByIdAndDeletedAtIsNull(dishId)
                 .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
 
@@ -64,6 +69,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
 
     @Override
     public DishOptionGroupResponseDto getDishOptionGroupById(Long id) {
+        log.info("Executing getDishOptionGroupById with id={}", id);
         return dishOptionGroupRepository.findByIdAndDeletedAtIsNull(id)
                 .map(this::toDto)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
@@ -72,6 +78,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
     @Override
     @Transactional
     public DishOptionGroupResponseDto updateDishOptionGroup(Long id, DishOptionGroupRequestDto request) {
+        log.info("Executing updateDishOptionGroup with id={}", id);
         if (request.minSelections() != null && request.maxSelections() != null && request.minSelections() > request.maxSelections()) {
             throw new IllegalArgumentException("minSelections cannot be greater than maxSelections");
         }
@@ -96,6 +103,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
     @Override
     @Transactional
     public void deleteDishOptionGroup(Long id) {
+        log.info("Executing deleteDishOptionGroup with id={}", id);
         if (dishOptionRepository.existsByOptionGroupIdAndDeletedAtIsNull(id)) {
             throw new IllegalStateException("Cannot delete Option Group while it has active Options");
         }

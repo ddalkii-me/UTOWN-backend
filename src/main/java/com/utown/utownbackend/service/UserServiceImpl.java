@@ -31,6 +31,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserProfileResponseDto getCurrentUserProfile(String phone) {
+        log.info("Executing getCurrentUserProfile");
         User user = findActiveUserByPhone(phone);
         return toDto(user);
     }
@@ -38,6 +39,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserProfileResponseDto updateCurrentUserProfile(String phone, UserProfileUpdateRequestDto request) {
+        log.info("Executing updateCurrentUserProfile");
         User user = findActiveUserByPhone(phone);
 
         String newEmail = request.email().trim().toLowerCase();
@@ -60,6 +62,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(String phone, ChangePasswordRequestDto request) {
+        log.info("Executing changePassword");
         User user = findActiveUserByPhone(phone);
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
@@ -79,6 +82,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteCurrentUser(String phone) {
+        log.info("Executing deleteCurrentUser");
         User user = findActiveUserByPhone(phone);
         user.setDeletedAt(LocalDateTime.now());
         user.setStatus(UserStatus.INACTIVE);
@@ -90,6 +94,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserProfileResponseDto getUserById(Long id) {
+        log.info("Executing getUserById with id={}", id);
         User user = userRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + id));
         return toDto(user);
@@ -98,6 +103,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public List<UserProfileResponseDto> getUsers(UserRole role, UserStatus status) {
+        log.info("Executing getUsers with role={}, status={}", role, status);
         List<User> users;
         if (role != null && status != null) {
             users = userRepository.findByRoleAndStatusAndDeletedAtIsNull(role, status);
@@ -114,6 +120,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserProfileResponseDto updateUserStatus(Long id, UserStatusUpdateRequestDto request) {
+        log.info("Executing updateUserStatus with id={}", id);
         User user = userRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + id));
 

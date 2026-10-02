@@ -12,7 +12,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/delivery-assignments")
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class DeliveryAssignmentController {
     public ResponseEntity<DeliveryAssignmentResponseDto> createAssignment(
             @Valid @RequestBody DeliveryAssignmentRequestDto request
     ) {
+        log.debug("Entering createAssignment method");
         DeliveryAssignmentResponseDto response = deliveryAssignmentService.createAssignment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -41,6 +44,7 @@ public class DeliveryAssignmentController {
     public ResponseEntity<DeliveryAssignmentResponseDto> getAssignmentById(
             @PathVariable Long id
     ) {
+        log.debug("Entering getAssignmentById method with id={}", id);
         DeliveryAssignmentResponseDto response = deliveryAssignmentService.getAssignmentById(id);
         return ResponseEntity.ok(response);
     }
@@ -64,6 +68,7 @@ public class DeliveryAssignmentController {
     public ResponseEntity<DeliveryAssignmentResponseDto> acceptAssignment(
             @PathVariable Long id
     ) {
+        log.debug("Entering acceptAssignment method with id={}", id);
         DeliveryAssignmentResponseDto response = deliveryAssignmentService.acceptAssignment(id);
         return ResponseEntity.ok(response);
     }
@@ -76,6 +81,7 @@ public class DeliveryAssignmentController {
     public ResponseEntity<DeliveryAssignmentResponseDto> pickupDelivery(
             @PathVariable Long id
     ) {
+        log.debug("Entering pickupDelivery method with id={}", id);
         DeliveryAssignmentResponseDto response = deliveryAssignmentService.pickupDelivery(id);
         return ResponseEntity.ok(response);
     }
@@ -88,6 +94,7 @@ public class DeliveryAssignmentController {
     public ResponseEntity<DeliveryAssignmentResponseDto> completeDelivery(
             @PathVariable Long id
     ) {
+        log.debug("Entering completeDelivery method with id={}", id);
         DeliveryAssignmentResponseDto response = deliveryAssignmentService.completeDelivery(id);
         return ResponseEntity.ok(response);
     }
@@ -100,6 +107,7 @@ public class DeliveryAssignmentController {
     public ResponseEntity<DeliveryAssignmentResponseDto> cancelAssignment(
             @PathVariable Long id
     ) {
+        log.debug("Entering cancelAssignment method with id={}", id);
         DeliveryAssignmentResponseDto response = deliveryAssignmentService.cancelAssignment(id);
         return ResponseEntity.ok(response);
     }

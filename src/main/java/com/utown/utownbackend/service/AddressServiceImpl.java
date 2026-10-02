@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AddressServiceImpl implements AddressService {
@@ -31,6 +33,7 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     @Override
     public AddressResponseDto createAddress(AddressRequestDto request) {
+        log.info("Executing createAddress");
 
         User user = userRepository
                 .findByIdAndDeletedAtIsNull(request.userId())
@@ -71,6 +74,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public List<AddressResponseDto> getAllAddresses() {
+        log.info("Executing getAllAddresses");
 
         return addressRepository
                 .findAllByDeletedAtIsNull()
@@ -81,6 +85,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public List<AddressResponseDto> getAddressesByUser(Long userId) {
+        log.info("Executing getAddressesByUser with userId={}", userId);
 
         userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() ->
@@ -95,6 +100,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponseDto getAddressById(Long id) {
+        log.info("Executing getAddressById with id={}", id);
 
         Address address = addressRepository
                 .findByIdAndDeletedAtIsNull(id)
@@ -109,6 +115,7 @@ public class AddressServiceImpl implements AddressService {
     public AddressResponseDto updateAddress(
             Long id,
             AddressUpdateRequestDto request) {
+        log.info("Executing updateAddress with id={}", id);
 
         Address address = addressRepository
                 .findByIdAndDeletedAtIsNull(id)
@@ -147,6 +154,7 @@ public class AddressServiceImpl implements AddressService {
     @Transactional
     @Override
     public void deleteAddress(Long id) {
+        log.info("Executing deleteAddress with id={}", id);
 
         Address address = addressRepository
                 .findByIdAndDeletedAtIsNull(id)

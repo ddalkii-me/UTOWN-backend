@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeliveryAreaServiceImpl implements DeliveryAreaService {
@@ -28,6 +30,7 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
     @Override
     public DeliveryAreaResponseDto createDeliveryArea(
             DeliveryAreaRequestDto request) {
+        log.info("Executing createDeliveryArea");
 
         City city = cityRepository
                 .findByIdAndDeletedAtIsNull(request.cityId())
@@ -56,6 +59,7 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
 
     @Override
     public List<DeliveryAreaResponseDto> getAllDeliveryAreas() {
+        log.info("Executing getAllDeliveryAreas");
 
         List<DeliveryArea> deliveryAreas =
                 deliveryAreaRepository.findAllByDeletedAtIsNull();
@@ -68,6 +72,7 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
     @Override
     public List<DeliveryAreaResponseDto> getDeliveryAreasByCity(
             Long cityId) {
+        log.info("Executing getDeliveryAreasByCity with cityId={}", cityId);
 
         cityRepository.findByIdAndDeletedAtIsNull(cityId)
                 .orElseThrow(() ->
@@ -83,6 +88,7 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
     @Override
     public DeliveryAreaResponseDto getDeliveryAreaById(
             Long id) {
+        log.info("Executing getDeliveryAreaById with id={}", id);
 
         DeliveryArea deliveryArea =
                 deliveryAreaRepository
@@ -99,6 +105,7 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
     public DeliveryAreaResponseDto updateDeliveryArea(
             Long id,
             DeliveryAreaRequestDto request) {
+        log.info("Executing updateDeliveryArea with id={}", id);
 
         DeliveryArea deliveryArea =
                 deliveryAreaRepository
@@ -143,6 +150,7 @@ public class DeliveryAreaServiceImpl implements DeliveryAreaService {
     @Transactional
     @Override
     public void deleteDeliveryArea(Long id) {
+        log.info("Executing deleteDeliveryArea with id={}", id);
 
         DeliveryArea deliveryArea =
                 deliveryAreaRepository

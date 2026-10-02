@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/delivery-areas")
 @RequiredArgsConstructor
@@ -23,6 +25,7 @@ public class DeliveryAreaController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DeliveryAreaResponseDto> createDeliveryArea(
             @Valid @RequestBody DeliveryAreaRequestDto request) {
+        log.debug("Entering createDeliveryArea method");
 
         DeliveryAreaResponseDto response =
                 deliveryAreaService.createDeliveryArea(request);
@@ -35,6 +38,7 @@ public class DeliveryAreaController {
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DeliveryAreaResponseDto>> getAllDeliveryAreas() {
+        log.debug("Entering getAllDeliveryAreas method");
 
         List<DeliveryAreaResponseDto> response =
                 deliveryAreaService.getAllDeliveryAreas();
@@ -46,6 +50,7 @@ public class DeliveryAreaController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<DeliveryAreaResponseDto> getDeliveryAreaById(
             @PathVariable Long id) {
+        log.debug("Entering getDeliveryAreaById method with id={}", id);
 
         DeliveryAreaResponseDto response =
                 deliveryAreaService.getDeliveryAreaById(id);
@@ -57,6 +62,7 @@ public class DeliveryAreaController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DeliveryAreaResponseDto>> getDeliveryAreasByCity(
             @PathVariable Long cityId) {
+        log.debug("Entering getDeliveryAreasByCity method with cityId={}", cityId);
 
         List<DeliveryAreaResponseDto> response =
                 deliveryAreaService.getDeliveryAreasByCity(cityId);
@@ -69,6 +75,7 @@ public class DeliveryAreaController {
     public ResponseEntity<DeliveryAreaResponseDto> updateDeliveryArea(
             @PathVariable Long id,
             @Valid @RequestBody DeliveryAreaRequestDto request) {
+        log.debug("Entering updateDeliveryArea method with id={}", id);
 
         DeliveryAreaResponseDto response =
                 deliveryAreaService.updateDeliveryArea(id, request);
@@ -80,6 +87,7 @@ public class DeliveryAreaController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDeliveryArea(
             @PathVariable Long id) {
+        log.debug("Entering deleteDeliveryArea method with id={}", id);
 
         deliveryAreaService.deleteDeliveryArea(id);
 

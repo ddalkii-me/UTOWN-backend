@@ -13,7 +13,9 @@ import com.utown.utownbackend.exception.ResourceConflictException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CityServiceImpl implements CityService {
@@ -23,6 +25,7 @@ public class CityServiceImpl implements CityService {
 
     @Override
     public CityResponseDto createCity(CityRequestDto request) {
+        log.info("Executing createCity");
 
         if (cityRepository.existsByName(request.name())) {
             throw new ResourceConflictException(
@@ -41,6 +44,7 @@ public class CityServiceImpl implements CityService {
 
     @Override
     public List<CityResponseDto> getAllCities() {
+        log.info("Executing getAllCities");
 
         List<City> cities = cityRepository.findAllByDeletedAtIsNull();
 
@@ -51,6 +55,7 @@ public class CityServiceImpl implements CityService {
 
     @Override
     public CityResponseDto getCityById(Long id) {
+        log.info("Executing getCityById with id={}", id);
 
         City city = cityRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->
@@ -63,6 +68,7 @@ public class CityServiceImpl implements CityService {
     public CityResponseDto updateCity(
             Long id,
             CityRequestDto request) {
+        log.info("Executing updateCity with id={}", id);
 
         City city = cityRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->
@@ -83,6 +89,7 @@ public class CityServiceImpl implements CityService {
     @Transactional
     @Override
     public void deleteCity(Long id) {
+        log.info("Executing deleteCity with id={}", id);
 
         City city = cityRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() ->

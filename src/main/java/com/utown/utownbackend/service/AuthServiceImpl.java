@@ -38,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponseDto register(RegisterRequestDto request) {
+        log.info("Executing register");
         String normalizedPhone = PhoneUtil.normalizePhone(request.phone());
         if (normalizedPhone == null) {
             throw new IllegalArgumentException("Invalid phone number format");
@@ -73,6 +74,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponseDto login(LoginRequestDto request) {
+        log.info("Executing login");
         String normalizedPhone = PhoneUtil.normalizePhone(request.phone());
         if (normalizedPhone == null) {
             throw new IllegalArgumentException("Invalid phone number format");
@@ -101,6 +103,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponseDto refreshToken(TokenRefreshRequestDto request) {
+        log.info("Executing refreshToken");
         return refreshTokenService.findByToken(request.refreshToken())
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
@@ -119,6 +122,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(String phone) {
+        log.info("Executing logout");
         User user = userRepository.findByPhoneAndDeletedAtIsNull(phone)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         refreshTokenService.deleteByUserId(user.getId());

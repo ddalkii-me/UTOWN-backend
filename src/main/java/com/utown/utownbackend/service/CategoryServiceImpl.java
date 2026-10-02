@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,6 +30,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     @Override
     public CategoryResponseDto createCategory(CategoryRequestDto request) {
+        log.info("Executing createCategory");
 
         Restaurant restaurant = restaurantRepository.findById(request.restaurantId())
                 .orElseThrow(() -> new EntityNotFoundException("Restaurant not found"));
@@ -53,11 +56,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryResponseDto> getAllCategories() {
+        log.info("Executing getAllCategories");
         return getAllCategories(null);
     }
 
     @Override
     public List<CategoryResponseDto> getAllCategories(Long restaurantId) {
+        log.info("Executing getAllCategories with restaurantId={}", restaurantId);
         List<Category> categories;
         if (restaurantId != null) {
             categories = categoryRepository.findAllByRestaurantIdAndDeletedAtIsNullOrderByPriorityAsc(restaurantId);
@@ -79,6 +84,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponseDto getCategoryById(Long id) {
+        log.info("Executing getCategoryById with id={}", id);
 
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
@@ -98,6 +104,7 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryResponseDto updateCategory(
             Long id,
             CategoryRequestDto request) {
+        log.info("Executing updateCategory with id={}", id);
 
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
@@ -126,6 +133,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     @Override
     public void deleteCategory(Long id) {
+        log.info("Executing deleteCategory with id={}", id);
 
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
