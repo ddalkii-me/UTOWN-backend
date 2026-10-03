@@ -3,6 +3,7 @@ package com.utown.utownbackend.repository.specification;
 import com.utown.utownbackend.entity.City;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.entity.RestaurantType;
+import com.utown.utownbackend.entity.RestaurantStatus;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
@@ -18,13 +19,18 @@ public class RestaurantSpecification {
             Long cityId,
             String typeName,
             BigDecimal minRating,
-            String searchKeyword
+            String searchKeyword,
+            RestaurantStatus status
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Always only return active/undeleted restaurants
+            // Exclude soft-deleted rows
             predicates.add(cb.isNull(root.get("deletedAt")));
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
 
             if (cityId != null) {
                 Join<Restaurant, City> cityJoin = root.join("city");

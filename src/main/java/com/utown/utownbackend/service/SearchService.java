@@ -12,6 +12,7 @@ public interface SearchService {
             String type,
             BigDecimal minRating,
             String keyword,
+            com.utown.utownbackend.entity.RestaurantStatus status,
             Pageable pageable
     );
 }

@@ -26,10 +26,11 @@ public class SearchServiceImpl implements SearchService {
             String type, 
             BigDecimal minRating, 
             String keyword, 
+            com.utown.utownbackend.entity.RestaurantStatus status,
             Pageable pageable
     ) {
         Specification<Restaurant> spec = RestaurantSpecification.getSearchSpecification(
-                cityId, type, minRating, keyword
+                cityId, type, minRating, keyword, status
         );
 
         return restaurantRepository.findAll(spec, pageable)

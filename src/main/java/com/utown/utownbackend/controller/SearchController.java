@@ -30,10 +30,11 @@ public class SearchController {
             @RequestParam(required = false) String type,
             @RequestParam(required = false) BigDecimal minRating,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) com.utown.utownbackend.entity.RestaurantStatus status,
             @PageableDefault(size = 20, sort = "averageRating", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<RestaurantResponseDto> results = searchService.searchRestaurants(
-                cityId, type, minRating, keyword, pageable
+                cityId, type, minRating, keyword, status, pageable
         );
 
         return ResponseEntity.ok(results);
