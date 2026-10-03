@@ -41,9 +41,13 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       SERVER_ADDRESS: 0.0.0.0
+      SOCKETIO_HOST: 0.0.0.0
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      SOCKETIO_PORT: ${SOCKETIO_PORT:-9092}
+
     ports:
       - "${APP_PORT:-8080}:8080"
+      - "${SOCKETIO_PORT:-9092}:9092"
     networks:
       - utown-network
 

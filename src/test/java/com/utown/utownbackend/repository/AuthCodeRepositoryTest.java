@@ -63,9 +63,13 @@ class AuthCodeRepositoryTest {
         authCode.setAttempts(0);
         authCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
         authCode.setUsedAt(usedAt);
-        authCode.setCreatedAt(createdAt);
-        authCode.setUpdatedAt(createdAt);
-        return entityManager.persist(authCode);
+        AuthCode saved = entityManager.persist(authCode);
+        entityManager.flush();
+
+        saved.setCreatedAt(createdAt);
+        saved.setUpdatedAt(createdAt);
+
+        return saved;
     }
 
     @Test
@@ -73,7 +77,13 @@ class AuthCodeRepositoryTest {
     void findTopByUserAndPurposeOrderByCreatedAtDesc_returnsLatest() {
         LocalDateTime now = LocalDateTime.now();
         persistAuthCode(user, "hash1", AuthCodePurpose.PASSWORD_RESET, now.minusMinutes(2), null);
-        AuthCode newerCode = persistAuthCode(user, "hash2", AuthCodePurpose.PASSWORD_RESET, now.minusSeconds(30), null);
+        AuthCode newerCode = persistAuthCode(
+                user,
+                "hash2",
+                AuthCodePurpose.PASSWORD_RESET,
+                now.minusSeconds(30),
+                null
+        );
         persistAuthCode(otherUser, "otherHash", AuthCodePurpose.PASSWORD_RESET, now, null);
         entityManager.flush();
 
