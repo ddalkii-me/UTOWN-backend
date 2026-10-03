@@ -2,6 +2,7 @@ package com.utown.utownbackend.repository;
 
 import com.utown.utownbackend.config.JpaAuditingConfig;
 import com.utown.utownbackend.entity.*;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -133,5 +134,23 @@ class NotificationRepositoryTest {
         // user2 unread should remain untouched
         long user2Unread = notificationRepository.countByUserIdAndIsReadFalse(user2.getId());
         assertThat(user2Unread).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("findByIdWithUser - should return notification with user eagerly fetched")
+    void findByIdWithUser_eagerlyFetchesUser() {
+        entityManager.clear();
+
+        Optional<Notification> found = notificationRepository.findByIdWithUser(n1.getId());
+
+        assertThat(found).isPresent();
+        assertThat(Hibernate.isInitialized(found.get().getUser())).isTrue();
+        assertThat(found.get().getUser().getId()).isEqualTo(user1.getId());
+    }
+
+    @Test
+    @DisplayName("findByIdWithUser - should return empty for unknown id")
+    void findByIdWithUser_unknownId_returnsEmpty() {
+        assertThat(notificationRepository.findByIdWithUser(-1L)).isEmpty();
     }
 }
