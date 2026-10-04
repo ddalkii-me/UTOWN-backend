@@ -124,13 +124,13 @@ class OrderRepositoryTest {
     }
 
     @Test
-    @DisplayName("findById - eagerly fetches user, restaurant, and address to eliminate N+1")
-    void findById_eagerlyFetchesAssociations() {
+    @DisplayName("findByIdWithDetails - eagerly fetches user, restaurant, and address to eliminate N+1")
+    void findByIdWithDetails_eagerlyFetchesAssociations() {
         Order order = createOrder("ORD-001");
         entityManager.flush();
         entityManager.clear();
 
-        Optional<Order> found = orderRepository.findById(order.getId());
+        Optional<Order> found = orderRepository.findByIdWithDetails(order.getId());
 
         assertThat(found).isPresent();
         assertThat(Hibernate.isInitialized(found.get().getUser())).isTrue();

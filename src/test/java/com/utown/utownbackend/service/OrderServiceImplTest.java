@@ -72,6 +72,9 @@ class OrderServiceImplTest {
     @Mock
     private RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
 
+    @Mock
+    private SocketIONotificationService socketIONotificationService;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -208,6 +211,7 @@ class OrderServiceImplTest {
         verify(orderItemRepository).save(any(OrderItem.class));
         verify(orderItemOptionRepository).save(any(OrderItemOption.class));
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendNewOrder(99L, response);
     }
 
     @Test
@@ -431,7 +435,7 @@ class OrderServiceImplTest {
         Order o = createTestOrder(500L, OrderStatus.PENDING);
         OrderItem item = createTestOrderItem(600L, o);
 
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
@@ -445,12 +449,13 @@ class OrderServiceImplTest {
         assertNotNull(response.acceptedAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
     void acceptOrder_invalidStatus_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.ACCEPTED);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
 
         OrderAcceptRequestDto request = new OrderAcceptRequestDto(30);
         assertThrows(IllegalStateException.class, () -> orderService.acceptOrder(500L, request));
@@ -459,7 +464,7 @@ class OrderServiceImplTest {
 
     @Test
     void acceptOrder_notFound_throwsEntityNotFound() {
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findWithUserAndRestaurantOwnerById(999L)).thenReturn(Optional.empty());
 
         OrderAcceptRequestDto request = new OrderAcceptRequestDto(30);
         assertThrows(EntityNotFoundException.class, () -> orderService.acceptOrder(999L, request));
@@ -470,7 +475,7 @@ class OrderServiceImplTest {
         Order o = createTestOrder(500L, OrderStatus.ACCEPTED);
         OrderItem item = createTestOrderItem(600L, o);
 
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
@@ -481,12 +486,13 @@ class OrderServiceImplTest {
         assertEquals(OrderStatus.IN_PREPARATION, response.status());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
     void startPreparation_invalidStatus_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.PENDING);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
 
         assertThrows(IllegalStateException.class, () -> orderService.startPreparation(500L));
         verify(orderRepository, never()).save(o);
@@ -498,7 +504,7 @@ class OrderServiceImplTest {
         o.setDeliveredAt(LocalDateTime.now().minusMinutes(5));
         OrderItem item = createTestOrderItem(600L, o);
 
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
@@ -510,12 +516,13 @@ class OrderServiceImplTest {
         assertNotNull(response.deliveredAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
     void completeOrder_invalidStatus_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.PENDING);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
 
         assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
         verify(orderRepository, never()).save(o);
@@ -524,7 +531,7 @@ class OrderServiceImplTest {
     @Test
     void completeOrder_inPreparationStatus_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
 
         assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
         verify(orderRepository, never()).save(o);
@@ -535,7 +542,7 @@ class OrderServiceImplTest {
         Order o = createTestOrder(500L, OrderStatus.PENDING);
         OrderItem item = createTestOrderItem(600L, o);
 
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         when(orderItemRepository.findAllByOrderId(500L)).thenReturn(List.of(item));
         when(orderItemOptionRepository.findAllByOrderItemIdIn(List.of(600L))).thenReturn(List.of());
@@ -549,12 +556,13 @@ class OrderServiceImplTest {
         assertNotNull(response.rejectedAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
     void declineOrder_invalidStatus_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.IN_PREPARATION);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
 
         OrderDeclineRequestDto request = new OrderDeclineRequestDto("Restaurant is closed");
         assertThrows(IllegalStateException.class, () -> orderService.declineOrder(500L, request));
@@ -631,6 +639,7 @@ class OrderServiceImplTest {
         assertEquals(CartStatus.EXPIRED, cart.getStatus());
         verify(cartRepository).save(cart);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendNewOrder(99L, response);
     }
 
     @Test
@@ -761,6 +770,7 @@ class OrderServiceImplTest {
         assertEquals(PaymentStatus.REFUNDED, response.paymentStatus());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -790,6 +800,7 @@ class OrderServiceImplTest {
         assertNotNull(response.readyAt());
         verify(orderRepository).save(o);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(socketIONotificationService).sendOrderStatusUpdated(1L, response);
     }
 
     @Test
@@ -804,7 +815,7 @@ class OrderServiceImplTest {
     @Test
     void completeOrder_readyForPickup_throwsIllegalStateException() {
         Order o = createTestOrder(500L, OrderStatus.READY_FOR_PICKUP);
-        when(orderRepository.findById(500L)).thenReturn(Optional.of(o));
+        when(orderRepository.findWithUserAndRestaurantOwnerById(500L)).thenReturn(Optional.of(o));
 
         assertThrows(IllegalStateException.class, () -> orderService.completeOrder(500L));
         verify(orderRepository, never()).save(o);

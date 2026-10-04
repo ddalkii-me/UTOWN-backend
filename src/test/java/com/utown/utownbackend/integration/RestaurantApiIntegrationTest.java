@@ -1,6 +1,8 @@
 package com.utown.utownbackend.integration;
 
 import com.utown.utownbackend.dto.RestaurantAdminUpdateRequestDto;
+import com.utown.utownbackend.service.SocketIONotificationService;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import com.utown.utownbackend.dto.RestaurantRequestDto;
 import com.utown.utownbackend.dto.WorkingHoursDto;
@@ -51,6 +53,9 @@ class RestaurantApiIntegrationTest {
 
     @Autowired
     private RestaurantRepository restaurantRepository;
+
+    @MockitoBean
+    private SocketIONotificationService socketIONotificationService;
 
     private User owner;
     private City city;

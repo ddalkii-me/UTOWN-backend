@@ -1,5 +1,7 @@
 # UTown Backend
 
+[![CI](https://github.com/Habsida-Projects/utown-backend-aug7/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/Habsida-Projects/utown-backend-aug7/actions/workflows/ci.yml)
+
 Food delivery platform backend for the UTown project. Built with **Spring Boot 4**, **Java 21**, **Spring Security (JWT)**, **Spring Data JPA**, and **MySQL 8.4**.
 
 ---

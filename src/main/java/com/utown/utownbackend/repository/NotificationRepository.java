@@ -23,7 +23,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Optional<Notification> findByIdAndUserId(Long id, Long userId);
 
     @EntityGraph(attributePaths = {"user"})
-    Optional<Notification> findByIdWithUser(Long id);
+    @Query("SELECT n FROM Notification n WHERE n.id = :id")
+    Optional<Notification> findByIdWithUser(@Param("id") Long id);
 
     void deleteByUserId(Long userId);
 
