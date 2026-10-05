@@ -43,4 +43,14 @@ public interface DishRepository extends JpaRepository<Dish, Long> {
 
     @EntityGraph(attributePaths = {"restaurant", "category"})
     Optional<Dish> findByIdAndDeletedAtIsNotNull(Long id);
+
+    boolean existsByIdAndRestaurantOwnerIdAndDeletedAtIsNull(
+            Long dishId,
+            Long ownerId
+    );
+
+    boolean existsByIdAndRestaurantOwnerIdAndDeletedAtIsNotNull(
+            Long dishId,
+            Long ownerId
+    );
 }

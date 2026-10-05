@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
@@ -84,5 +86,15 @@ public class DishController {
         log.debug("Entering restoreDishById method with id={}", id);
         dishService.restoreDish(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/image")
+    @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwner(authentication, #id)")
+    public ResponseEntity<DishResponseDto> uploadDishImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) throws IOException {
+        DishResponseDto response = dishService.uploadDishImage(id, file);
+        return ResponseEntity.ok(response);
     }
 }

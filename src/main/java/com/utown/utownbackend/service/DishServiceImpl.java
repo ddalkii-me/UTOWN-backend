@@ -12,7 +12,9 @@ import com.utown.utownbackend.repository.RestaurantRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -25,12 +27,17 @@ public class DishServiceImpl implements DishService {
     final RestaurantRepository restaurantRepository;
     final CategoryRepository categoryRepository;
     final com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository;
+    final FileStorageService fileStorageService;
+    final DishImageUpdateService dishImageUpdateService;
 
-    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository) {
+    public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository, FileStorageService fileStorageService,
+                           DishImageUpdateService dishImageUpdateService) {
         this.dishRepository = dishRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.dishOptionGroupRepository = dishOptionGroupRepository;
+        this.fileStorageService = fileStorageService;
+        this.dishImageUpdateService = dishImageUpdateService;
     }
 
     @Override
@@ -162,6 +169,13 @@ public class DishServiceImpl implements DishService {
         );
         dish.setDeletedAt(null);
         dishRepository.save(dish);
+    }
+
+    @Override
+    public DishResponseDto uploadDishImage(Long id, MultipartFile file) throws IOException {
+        String imageKey = fileStorageService.uploadFile(file);
+
+        return dishImageUpdateService.updateImageUrl(id, imageKey);
     }
 
     private DishResponseDto toDto(Dish dish) {

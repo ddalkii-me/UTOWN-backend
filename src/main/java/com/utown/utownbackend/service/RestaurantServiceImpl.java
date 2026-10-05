@@ -6,8 +6,11 @@ import com.utown.utownbackend.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,6 +27,8 @@ public class RestaurantServiceImpl implements RestaurantService {
     private final RestaurantTypeRepository restaurantTypeRepository;
     private final CityRepository cityRepository;
     private final RestaurantWorkingHoursRepository workingHoursRepository;
+    private final FileStorageService fileStorageService;
+    private final RestaurantLogoUpdateService restaurantLogoUpdateService;
 
     @Transactional
     @Override
@@ -202,8 +207,13 @@ public class RestaurantServiceImpl implements RestaurantService {
                 .toList();
     }
 
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public RestaurantResponseDto uploadRestaurantLogo(Long id, MultipartFile file) throws IOException {
+        String logoKey = fileStorageService.uploadFile(file);
 
-
+        return restaurantLogoUpdateService.updateLogoUrl(id, logoKey);
+    }
 
     private RestaurantResponseDto toDto(Restaurant restaurant) {
         return new RestaurantResponseDto(

@@ -3,6 +3,9 @@ package com.utown.utownbackend.service;
 import com.utown.utownbackend.dto.DishRequestDto;
 import com.utown.utownbackend.dto.DishResponseDto;
 import com.utown.utownbackend.entity.DishStatus;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.util.List;
 
 public interface DishService {
@@ -20,5 +23,7 @@ public interface DishService {
     void deleteDish(Long id);
 
     void restoreDish(Long id);
+
+    DishResponseDto uploadDishImage(Long id, MultipartFile file) throws IOException;
 }
 
