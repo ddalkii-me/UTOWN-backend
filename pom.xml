@@ -122,6 +122,8 @@
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.socketio4j</groupId>
 			<artifactId>netty-socketio-core</artifactId>
 			<version>4.0.1</version>

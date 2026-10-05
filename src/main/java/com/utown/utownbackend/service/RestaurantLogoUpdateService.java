@@ -43,7 +43,9 @@ public class RestaurantLogoUpdateService {
                 savedRestaurant.getLatitude(),
                 savedRestaurant.getLongitude(),
                 savedRestaurant.getMinimumOrderAmount(),
-                savedRestaurant.getStatus()
+                savedRestaurant.getStatus(),
+                savedRestaurant.getAverageRating(),
+                savedRestaurant.getDeliveryTimeMinutes()
         );
     }
 }
