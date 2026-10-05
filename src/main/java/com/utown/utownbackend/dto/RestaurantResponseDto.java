@@ -17,5 +17,7 @@ public record RestaurantResponseDto(
         BigDecimal latitude,
         BigDecimal longitude,
         BigDecimal minimumOrderAmount,
-        RestaurantStatus status
+        RestaurantStatus status,
+        BigDecimal averageRating,
+        Integer deliveryTimeMinutes
 ) {}

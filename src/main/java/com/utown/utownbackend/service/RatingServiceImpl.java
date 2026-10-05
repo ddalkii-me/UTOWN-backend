@@ -87,6 +87,8 @@ public class RatingServiceImpl implements RatingService {
 
         Rating saved = ratingRepository.save(rating);
 
+        updateRestaurantAverageRating(restaurant);
+
         return toResponseDto(saved);
     }
 
@@ -143,6 +145,18 @@ public class RatingServiceImpl implements RatingService {
         rating.setDeletedAt(LocalDateTime.now());
 
         ratingRepository.save(rating);
+
+        updateRestaurantAverageRating(rating.getRestaurant());
+    }
+
+    private void updateRestaurantAverageRating(Restaurant restaurant) {
+        Double avg = ratingRepository.getAverageScoreByRestaurantId(restaurant.getId());
+        if (avg == null) {
+            restaurant.setAverageRating(java.math.BigDecimal.ZERO);
+        } else {
+            restaurant.setAverageRating(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
+        }
+        restaurantRepository.save(restaurant);
     }
 
     private RatingResponseDto toResponseDto(Rating rating) {
