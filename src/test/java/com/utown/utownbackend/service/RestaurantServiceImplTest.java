@@ -16,6 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.utown.utownbackend.util.TestDataFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -44,6 +47,12 @@ class RestaurantServiceImplTest {
 
     @Mock
     private RestaurantWorkingHoursRepository workingHoursRepository;
+
+    @Mock
+    private CacheManager cacheManager;
+
+    @Mock
+    private Cache restaurantMenusCache;
 
     @InjectMocks
     private RestaurantServiceImpl restaurantService;
@@ -101,6 +110,9 @@ class RestaurantServiceImplTest {
                 BigDecimal.valueOf(10000),
                 RestaurantStatus.OPEN
         );
+
+        lenient().when(cacheManager.getCache("restaurantMenus"))
+                .thenReturn(restaurantMenusCache);
     }
 
     // ── createRestaurant ─────────────────────────────────────────────

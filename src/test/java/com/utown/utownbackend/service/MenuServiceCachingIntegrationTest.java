@@ -1,5 +1,6 @@
 package com.utown.utownbackend.service;
 
+import com.utown.utownbackend.dto.RestaurantMenuResponseDto;
 import com.utown.utownbackend.entity.Dish;
 import com.utown.utownbackend.entity.Restaurant;
 import com.utown.utownbackend.entity.RestaurantStatus;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import static org.mockito.ArgumentMatchers.any;
 
@@ -39,7 +41,7 @@ import static org.mockito.Mockito.when;
 
 @Execution(ExecutionMode.SAME_THREAD)
 @SpringBootTest(properties = "spring.cache.type=redis")
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class MenuServiceCachingIntegrationTest {
 
     @Container
