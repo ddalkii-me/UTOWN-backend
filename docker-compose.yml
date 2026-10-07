@@ -25,6 +25,20 @@ services:
     networks:
       - utown-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: utown-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - utown-network
+
   app:
     build:
       context: .
@@ -34,6 +48,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+          condition: service_healthy
     environment:
       DB_URL: jdbc:mysql://mysql:3306/${DB_NAME:-utown_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       DB_USERNAME: ${DB_USERNAME:-utown_user}
@@ -44,6 +60,8 @@ services:
       SOCKETIO_HOST: 0.0.0.0
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
       SOCKETIO_PORT: ${SOCKETIO_PORT:-9092}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
 
     ports:
       - "${APP_PORT:-8080}:8080"

@@ -10,6 +10,7 @@ import com.utown.utownbackend.repository.CategoryRepository;
 import com.utown.utownbackend.repository.DishRepository;
 import com.utown.utownbackend.repository.RestaurantRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,15 +30,17 @@ public class DishServiceImpl implements DishService {
     final com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository;
     final FileStorageService fileStorageService;
     final DishImageUpdateService dishImageUpdateService;
+    final CacheManager cacheManager;
 
     public DishServiceImpl(DishRepository dishRepository, RestaurantRepository restaurantRepository, CategoryRepository categoryRepository, com.utown.utownbackend.repository.DishOptionGroupRepository dishOptionGroupRepository, FileStorageService fileStorageService,
-                           DishImageUpdateService dishImageUpdateService) {
+                           DishImageUpdateService dishImageUpdateService,  CacheManager cacheManager) {
         this.dishRepository = dishRepository;
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.dishOptionGroupRepository = dishOptionGroupRepository;
         this.fileStorageService = fileStorageService;
         this.dishImageUpdateService = dishImageUpdateService;
+        this.cacheManager = cacheManager;
     }
 
     @Override
@@ -69,6 +72,7 @@ public class DishServiceImpl implements DishService {
 
         Dish savedDish = dishRepository.save(dish);
 
+        evictRestaurantMenu(request.restaurantId());
 
         return toDto(savedDish);
     }
@@ -112,7 +116,6 @@ public class DishServiceImpl implements DishService {
         return toDto(dish);
     }
 
-
     @Override
     @Transactional
     public DishResponseDto updateDish(Long id, DishRequestDto request) {
@@ -130,6 +133,8 @@ public class DishServiceImpl implements DishService {
         if (!category.getRestaurant().getId().equals(restaurant.getId())) {
             throw new IllegalArgumentException("Category does not belong to the specified restaurant");
         }
+        Long previousRestaurantId = dish.getRestaurant().getId();
+
         dish.setRestaurant(restaurant);
         dish.setCategory(category);
         dish.setName(request.name());
@@ -141,6 +146,8 @@ public class DishServiceImpl implements DishService {
 
         Dish savedDish = dishRepository.save(dish);
 
+        evictRestaurantMenu(previousRestaurantId);
+        evictRestaurantMenu(restaurant.getId());
 
         return toDto(savedDish);
     }
@@ -156,8 +163,13 @@ public class DishServiceImpl implements DishService {
         Dish dish = dishRepository.findByIdAndDeletedAtIsNull(id).orElseThrow(
                 () -> new EntityNotFoundException("Dish not found")
         );
+
+        Long restaurantId = dish.getRestaurant().getId();
+
         dish.setDeletedAt(LocalDateTime.now());
         dishRepository.save(dish);
+
+        evictRestaurantMenu(restaurantId);
     }
 
     @Override
@@ -169,6 +181,15 @@ public class DishServiceImpl implements DishService {
         );
         dish.setDeletedAt(null);
         dishRepository.save(dish);
+
+        evictRestaurantMenu(dish.getRestaurant().getId());
+    }
+
+    private void evictRestaurantMenu(Long restaurantId) {
+        var menuCache = cacheManager.getCache("restaurantMenus");
+        if (menuCache != null) {
+            menuCache.evict(restaurantId);
+        }
     }
 
     @Override

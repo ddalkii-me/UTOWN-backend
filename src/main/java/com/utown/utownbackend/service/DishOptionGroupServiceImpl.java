@@ -8,6 +8,7 @@ import com.utown.utownbackend.repository.DishOptionGroupRepository;
 import com.utown.utownbackend.repository.DishRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
     private final DishOptionGroupRepository dishOptionGroupRepository;
     private final DishRepository dishRepository;
     private final com.utown.utownbackend.repository.DishOptionRepository dishOptionRepository;
+    private final CacheManager cacheManager;
 
     @Override
     @Transactional
@@ -45,6 +47,8 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
         group.setSortOrder(request.sortOrder());
 
         DishOptionGroup savedGroup = dishOptionGroupRepository.save(group);
+        evictRestaurantMenu(dish.getRestaurant().getId());
+
         return toDto(savedGroup);
     }
 
@@ -86,6 +90,8 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
         DishOptionGroup group = dishOptionGroupRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
 
+        Long previousRestaurantId = group.getDish().getRestaurant().getId();
+
         Dish dish = dishRepository.findByIdAndDeletedAtIsNull(request.dishId())
                 .orElseThrow(() -> new EntityNotFoundException("Dish not found"));
 
@@ -97,6 +103,9 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
         group.setSortOrder(request.sortOrder());
 
         DishOptionGroup updatedGroup = dishOptionGroupRepository.save(group);
+        evictRestaurantMenu(previousRestaurantId);
+        evictRestaurantMenu(dish.getRestaurant().getId());
+
         return toDto(updatedGroup);
     }
 
@@ -110,8 +119,21 @@ public class DishOptionGroupServiceImpl implements DishOptionGroupService {
 
         DishOptionGroup group = dishOptionGroupRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
+
+        Long restaurantId = group.getDish().getRestaurant().getId();
+
         group.setDeletedAt(LocalDateTime.now());
         dishOptionGroupRepository.save(group);
+
+        evictRestaurantMenu(restaurantId);
+
+    }
+
+    private void evictRestaurantMenu(Long restaurantId) {
+        var menuCache = cacheManager.getCache("restaurantMenus");
+        if (menuCache != null) {
+            menuCache.evict(restaurantId);
+        }
     }
 
     private DishOptionGroupResponseDto toDto(DishOptionGroup group) {

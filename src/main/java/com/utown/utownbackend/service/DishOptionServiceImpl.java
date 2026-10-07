@@ -8,6 +8,7 @@ import com.utown.utownbackend.repository.DishOptionGroupRepository;
 import com.utown.utownbackend.repository.DishOptionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class DishOptionServiceImpl implements DishOptionService {
 
     private final DishOptionRepository dishOptionRepository;
     private final DishOptionGroupRepository dishOptionGroupRepository;
+    private final CacheManager cacheManager;
 
     @Override
     @Transactional
@@ -39,6 +41,9 @@ public class DishOptionServiceImpl implements DishOptionService {
         option.setStatus(request.status());
 
         DishOption savedOption = dishOptionRepository.save(option);
+
+        evictRestaurantMenu(group.getDish().getRestaurant().getId());
+
         return toDto(savedOption);
     }
 
@@ -76,6 +81,8 @@ public class DishOptionServiceImpl implements DishOptionService {
         DishOption option = dishOptionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option not found"));
 
+        Long previousRestaurantId = option.getOptionGroup().getDish().getRestaurant().getId();
+
         DishOptionGroup group = dishOptionGroupRepository.findByIdAndDeletedAtIsNull(request.optionGroupId())
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option Group not found"));
 
@@ -86,6 +93,10 @@ public class DishOptionServiceImpl implements DishOptionService {
         option.setStatus(request.status());
 
         DishOption updatedOption = dishOptionRepository.save(option);
+
+        evictRestaurantMenu(previousRestaurantId);
+        evictRestaurantMenu(group.getDish().getRestaurant().getId());
+
         return toDto(updatedOption);
     }
 
@@ -96,7 +107,19 @@ public class DishOptionServiceImpl implements DishOptionService {
         DishOption option = dishOptionRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Dish Option not found"));
         option.setDeletedAt(LocalDateTime.now());
+
+        Long restaurantId = option.getOptionGroup().getDish().getRestaurant().getId();
+
         dishOptionRepository.save(option);
+
+        evictRestaurantMenu(restaurantId);
+    }
+
+    private void evictRestaurantMenu(Long restaurantId) {
+        var menuCache = cacheManager.getCache("restaurantMenus");
+        if (menuCache != null) {
+            menuCache.evict(restaurantId);
+        }
     }
 
     private DishOptionResponseDto toDto(DishOption option) {

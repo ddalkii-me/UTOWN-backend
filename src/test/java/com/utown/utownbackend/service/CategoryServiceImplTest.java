@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 
 import com.utown.utownbackend.util.TestDataFactory;
 import java.util.List;
@@ -40,6 +41,9 @@ class CategoryServiceImplTest {
 
     @InjectMocks
     private CategoryServiceImpl categoryService;
+
+    @Mock
+    private CacheManager cacheManager;
 
     private Restaurant restaurant;
     private Category category;
