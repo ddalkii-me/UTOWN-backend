@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record OrderRequestDto(
-        @NotNull Long userId,
+        Long userId,
         @NotNull Long restaurantId,
         @NotNull Long addressId,
         String deliveryNote,

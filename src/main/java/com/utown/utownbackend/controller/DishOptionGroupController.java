@@ -12,15 +12,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/dish-option-groups")
 @RequiredArgsConstructor
+@Tag(name = "Dish Option Group", description = "API for managing dish option groups")
 public class DishOptionGroupController {
 
     private final DishOptionGroupService dishOptionGroupService;
 
+    @Operation(summary = "Create dish option group")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or @dishOptionGroupSecurity.isOwnerOfDish(authentication, #request.dishId())")
     public ResponseEntity<DishOptionGroupResponseDto> createDishOptionGroup(
@@ -38,6 +42,7 @@ public class DishOptionGroupController {
         return ResponseEntity.ok(dishOptionGroupService.getAllDishOptionGroups());
     }
 
+    @Operation(summary = "Get dish option group by id")
     @GetMapping("/dish/{dishId}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionGroupResponseDto>> getDishOptionGroupsByDishId(
@@ -47,6 +52,7 @@ public class DishOptionGroupController {
         return ResponseEntity.ok(dishOptionGroupService.getDishOptionGroupsByDishId(dishId));
     }
 
+    @Operation(summary = "Get dish option group by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<DishOptionGroupResponseDto> getDishOptionGroupById(
@@ -56,6 +62,7 @@ public class DishOptionGroupController {
         return ResponseEntity.ok(dishOptionGroupService.getDishOptionGroupById(id));
     }
 
+    @Operation(summary = "Update dish option group")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @dishOptionGroupSecurity.isOwner(authentication, #id)")
     public ResponseEntity<DishOptionGroupResponseDto> updateDishOptionGroup(
@@ -66,6 +73,7 @@ public class DishOptionGroupController {
         return ResponseEntity.ok(dishOptionGroupService.updateDishOptionGroup(id, request));
     }
 
+    @Operation(summary = "Delete dish option group")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @dishOptionGroupSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteDishOptionGroup(

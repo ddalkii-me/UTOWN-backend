@@ -84,5 +84,13 @@ public class Order extends BaseEntity{
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    @Column(name = "payment_transaction_id", length = 100)
+    private String paymentTransactionId;
+
+    @Column(name = "refund_transaction_id", length = 100)
+    private String refundTransactionId;
+
+    @Version
+    private Long version;
 
 }

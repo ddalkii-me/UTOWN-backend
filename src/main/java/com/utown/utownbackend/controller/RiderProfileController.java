@@ -12,15 +12,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/riders")
 @RequiredArgsConstructor
+@Tag(name = "Rider Profile", description = "API for managing rider profiles")
 public class RiderProfileController {
 
     private final RiderProfileService riderProfileService;
 
+    @Operation(summary = "Create rider profile")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RiderProfileResponseDto> createRiderProfile(
@@ -31,6 +35,7 @@ public class RiderProfileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Get rider profile by id")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<RiderProfileResponseDto>> getAllRiderProfiles(
@@ -41,6 +46,7 @@ public class RiderProfileController {
         return ResponseEntity.ok(list);
     }
 
+    @Operation(summary = "Get rider profile by id")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RiderProfileResponseDto> getRiderProfileById(
@@ -51,6 +57,7 @@ public class RiderProfileController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Get rider profile by user id")
     @GetMapping("/user/{userId}")
     @PreAuthorize("""
         hasRole('ADMIN') or
@@ -64,6 +71,7 @@ public class RiderProfileController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update rider profile")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RiderProfileResponseDto> updateRiderProfile(
@@ -75,6 +83,7 @@ public class RiderProfileController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update availability")
     @PatchMapping("/{id}/availability")
     @PreAuthorize("hasRole('ADMIN') or @riderProfileSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RiderProfileResponseDto> updateAvailability(
@@ -86,6 +95,7 @@ public class RiderProfileController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update status")
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RiderProfileResponseDto> updateStatus(
@@ -97,6 +107,7 @@ public class RiderProfileController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Delete rider profile")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRiderProfile(

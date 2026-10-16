@@ -13,15 +13,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/delivery-assignments")
 @RequiredArgsConstructor
+@Tag(name = "Delivery Assignment", description = "API for managing delivery assignments")
 public class DeliveryAssignmentController {
 
     private final DeliveryAssignmentService deliveryAssignmentService;
 
+    @Operation(summary = "Create assignment")
     @PostMapping
     @PreAuthorize("""
         hasRole('ADMIN') or
@@ -35,6 +39,7 @@ public class DeliveryAssignmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Get assignment by id")
     @GetMapping("/{id}")
     @PreAuthorize("""
         hasRole('ADMIN') or
@@ -60,6 +65,7 @@ public class DeliveryAssignmentController {
         return ResponseEntity.ok(list);
     }
 
+    @Operation(summary = "Accept assignment")
     @PatchMapping("/{id}/accept")
     @PreAuthorize("""
         hasRole('ADMIN') or
@@ -73,6 +79,7 @@ public class DeliveryAssignmentController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Pickup delivery")
     @PatchMapping("/{id}/pickup")
     @PreAuthorize("""
         hasRole('ADMIN') or
@@ -86,6 +93,7 @@ public class DeliveryAssignmentController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Complete delivery")
     @PatchMapping("/{id}/deliver")
     @PreAuthorize("""
         hasRole('ADMIN') or
@@ -99,6 +107,7 @@ public class DeliveryAssignmentController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Cancel assignment")
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("""
         hasRole('ADMIN') or

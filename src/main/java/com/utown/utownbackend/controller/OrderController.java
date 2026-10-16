@@ -15,15 +15,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Tag(name = "Order", description = "API for managing orders")
 public class OrderController {
 
     private final OrderService orderService;
 
+    @Operation(summary = "Create order")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and (#request.userId() == null or #request.userId() == authentication.principal.id))")
     public ResponseEntity<OrderResponseDto> createOrder(
@@ -44,6 +48,7 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Checkout")
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and (#request.userId() == null or #request.userId() == authentication.principal.id))")
     public ResponseEntity<OrderResponseDto> checkout(
@@ -78,6 +83,7 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
+    @Operation(summary = "Get order by id")
     @GetMapping("/{id}")
     @PreAuthorize("""
         hasRole('ADMIN')
@@ -91,6 +97,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderById(id));
     }
 
+    @Operation(summary = "Accept order")
     @PatchMapping("/{id}/accept")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isRestaurantOwner(authentication, #id)")
     public ResponseEntity<OrderResponseDto> acceptOrder(
@@ -101,6 +108,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.acceptOrder(id, request));
     }
 
+    @Operation(summary = "Start preparation")
     @PatchMapping("/{id}/prepare")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isRestaurantOwner(authentication, #id)")
     public ResponseEntity<OrderResponseDto> startPreparation(
@@ -110,6 +118,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.startPreparation(id));
     }
 
+    @Operation(summary = "Mark ready for pickup")
     @PatchMapping("/{id}/ready")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isRestaurantOwner(authentication, #id)")
     public ResponseEntity<OrderResponseDto> markReadyForPickup(
@@ -118,6 +127,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.markReadyForPickup(id));
     }
 
+    @Operation(summary = "Complete order")
     @PatchMapping("/{id}/complete")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isRestaurantOwner(authentication, #id)")
     public ResponseEntity<OrderResponseDto> completeOrder(
@@ -127,6 +137,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.completeOrder(id));
     }
 
+    @Operation(summary = "Cancel order")
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isCustomer(authentication, #id)")
     public ResponseEntity<OrderResponseDto> cancelOrder(
@@ -136,6 +147,7 @@ public class OrderController {
         return ResponseEntity.ok(orderService.cancelOrder(id, request));
     }
 
+    @Operation(summary = "Decline order")
     @PatchMapping("/{id}/decline")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isRestaurantOwner(authentication, #id)")
     public ResponseEntity<OrderResponseDto> declineOrder(

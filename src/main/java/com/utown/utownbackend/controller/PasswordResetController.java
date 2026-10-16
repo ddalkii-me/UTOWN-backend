@@ -16,15 +16,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/auth/password-reset")
 @RequiredArgsConstructor
+@Tag(name = "Password Reset", description = "API for managing password resets")
 public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
 
+    @Operation(summary = "Request password reset")
     @PostMapping("/request")
     public ResponseEntity<PasswordResetRequestResponseDto> requestPasswordReset(
             @Valid @RequestBody PasswordResetRequestDto request) {
@@ -33,6 +37,7 @@ public class PasswordResetController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Verify password reset")
     @PostMapping("/verify")
     public ResponseEntity<PasswordResetVerifyResponseDto> verifyPasswordReset(
             @Valid @RequestBody PasswordResetVerifyDto request) {

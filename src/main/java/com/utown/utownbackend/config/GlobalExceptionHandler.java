@@ -18,10 +18,27 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import org.springframework.security.access.AccessDeniedException;
 
 import java.util.stream.Collectors;
+import org.slf4j.MDC;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private void enrichProblemDetail(ProblemDetail problemDetail) {
+        String requestId = MDC.get(RequestCorrelationFilter.MDC_REQUEST_ID_KEY);
+        if (requestId != null) {
+            problemDetail.setProperty("requestId", requestId);
+        }
+    }
+
+    @Override
+    protected ProblemDetail createProblemDetail(Exception ex, HttpStatusCode status, String defaultDetail,
+                                                String detailMessageCode, Object[] detailMessageArguments,
+                                                WebRequest request) {
+        ProblemDetail problemDetail = super.createProblemDetail(ex, status, defaultDetail, detailMessageCode, detailMessageArguments, request);
+        enrichProblemDetail(problemDetail);
+        return problemDetail;
+    }
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleEntityNotFound(EntityNotFoundException ex) {
@@ -30,17 +47,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND, ex.getMessage());
         problemDetail.setTitle("Resource Not Found");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problemDetail);
     }
 
-    @ExceptionHandler(com.utown.utownbackend.exception.ResourceConflictException.class)
-    public ResponseEntity<ProblemDetail> handleResourceConflict(com.utown.utownbackend.exception.ResourceConflictException ex) {
+    @ExceptionHandler({
+        com.utown.utownbackend.exception.ResourceConflictException.class,
+        com.utown.utownbackend.exception.InvalidOrderStatusTransitionException.class
+    })
+    public ResponseEntity<ProblemDetail> handleResourceConflict(RuntimeException ex) {
         log.warn("Resource conflict: {}", ex.getMessage());
 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT, ex.getMessage());
         problemDetail.setTitle("Resource Conflict");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
     }
@@ -52,6 +74,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, ex.getMessage());
         problemDetail.setTitle("Bad Request");
+        enrichProblemDetail(problemDetail);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
+    }
+
+    @ExceptionHandler(com.utown.utownbackend.exception.PaymentFailedException.class)
+    public ResponseEntity<ProblemDetail> handlePaymentFailed(com.utown.utownbackend.exception.PaymentFailedException ex) {
+        log.warn("Payment failed: {}", ex.getMessage());
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, ex.getMessage());
+        problemDetail.setTitle("Payment Failed");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
     }
@@ -72,6 +106,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, errors);
         problemDetail.setTitle("Validation Failed");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
     }
@@ -85,6 +120,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred. Please try again later.");
         problemDetail.setTitle("Internal Server Error");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
     }
@@ -100,6 +136,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNAUTHORIZED, detail);
         problemDetail.setTitle("Unauthorized");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problemDetail);
     }
@@ -111,6 +148,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT, "A resource conflict occurred. This might be a duplicate entry.");
         problemDetail.setTitle("Data Integrity Violation");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
     }
@@ -122,6 +160,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "Your account is suspended or inactive.");
         problemDetail.setTitle("Account Disabled");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problemDetail);
     }
@@ -133,6 +172,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT, "Concurrent modification detected. Please try again.");
         problemDetail.setTitle("Concurrent Modification");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
     }
@@ -152,6 +192,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     "Authentication is required to access this resource."
             );
             problemDetail.setTitle("Unauthorized");
+            enrichProblemDetail(problemDetail);
 
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
@@ -163,6 +204,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "You do not have permission to access this resource."
         );
         problemDetail.setTitle("Forbidden");
+        enrichProblemDetail(problemDetail);
 
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)

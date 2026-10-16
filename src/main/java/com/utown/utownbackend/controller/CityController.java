@@ -12,15 +12,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/cities")
 @RequiredArgsConstructor
+@Tag(name = "City", description = "API for managing citys")
 public class CityController {
 
     private final CityService cityService;
 
+    @Operation(summary = "Create city")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CityResponseDto> createCity(
@@ -33,6 +37,7 @@ public class CityController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Get city by id")
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<CityResponseDto>> getAllCities() {
@@ -44,6 +49,7 @@ public class CityController {
         return ResponseEntity.ok(cities);
     }
 
+    @Operation(summary = "Get city by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<CityResponseDto> getCityById(
@@ -56,6 +62,7 @@ public class CityController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update city")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CityResponseDto> updateCity(
@@ -69,6 +76,7 @@ public class CityController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Delete city")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCity(

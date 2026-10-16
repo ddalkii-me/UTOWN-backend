@@ -10,15 +10,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/restaurants")
 @RequiredArgsConstructor
+@Tag(name = "Restaurant Delivery Area", description = "API for managing restaurant delivery areas")
 public class RestaurantDeliveryAreaController {
 
     private final RestaurantDeliveryAreaService restaurantDeliveryAreaService;
 
+    @Operation(summary = "Add delivery area")
     @PostMapping("/{restaurantId}/delivery-areas/{deliveryAreaId}")
     @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #restaurantId)")
     public ResponseEntity<RestaurantDeliveryAreaResponseDto> addDeliveryArea(
@@ -47,6 +51,7 @@ public class RestaurantDeliveryAreaController {
         );
     }
 
+    @Operation(summary = "Remove delivery area")
     @DeleteMapping("/{restaurantId}/delivery-areas/{deliveryAreaId}")
     @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #restaurantId)")
     public ResponseEntity<Void> removeDeliveryArea(

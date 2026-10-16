@@ -60,9 +60,9 @@ public class RatingServiceImpl implements RatingService {
             );
         }
 
-        if (order.getStatus() != OrderStatus.DELIVERED) {
+        if (order.getStatus() != OrderStatus.DELIVERED && order.getStatus() != OrderStatus.COMPLETED) {
             throw new ResourceConflictException(
-                    "Only delivered orders can be rated."
+                    "Only delivered or completed orders can be rated."
             );
         }
 

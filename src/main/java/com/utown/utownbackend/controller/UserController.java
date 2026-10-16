@@ -16,15 +16,19 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Tag(name = "User", description = "API for managing users")
 public class UserController {
 
     private final UserService userService;
 
+    @Operation(summary = "Get current user profile")
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileResponseDto> getCurrentUserProfile(Principal principal) {
@@ -35,6 +39,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getCurrentUserProfile(principal.getName()));
     }
 
+    @Operation(summary = "Update current user profile")
     @PutMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileResponseDto> updateCurrentUserProfile(
@@ -47,6 +52,7 @@ public class UserController {
         return ResponseEntity.ok(userService.updateCurrentUserProfile(principal.getName(), request));
     }
 
+    @Operation(summary = "Change password")
     @PutMapping("/me/password")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> changePassword(
@@ -60,6 +66,7 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Delete current user")
     @DeleteMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteCurrentUser(Principal principal) {
@@ -71,6 +78,7 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Get user by id")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isSelf(authentication, #id)")
     public ResponseEntity<UserProfileResponseDto> getUserById(@PathVariable Long id) {
@@ -78,6 +86,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
+    @Operation(summary = "Update user status")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserProfileResponseDto>> getUsers(
@@ -86,6 +95,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUsers(role, status));
     }
 
+    @Operation(summary = "Update user status")
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserProfileResponseDto> updateUserStatus(

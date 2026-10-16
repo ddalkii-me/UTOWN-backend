@@ -45,6 +45,9 @@ class DeliveryAssignmentServiceImplTest {
     @Mock
     private io.micrometer.core.instrument.Counter counter;
 
+    @Mock
+    private OrderService orderService;
+
     @InjectMocks
     private DeliveryAssignmentServiceImpl deliveryAssignmentService;
 
@@ -302,8 +305,7 @@ class DeliveryAssignmentServiceImplTest {
 
             assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.PICKED_UP);
             assertThat(response.pickedUpAt()).isNotNull();
-            assertThat(order.getPickedUpAt()).isNotNull();
-            verify(orderRepository).save(order);
+            verify(orderService).transitionOrderStatus(eq(order.getId()), eq(OrderStatus.OUT_FOR_DELIVERY), eq(riderUser), anyString());
         }
 
         @Test
@@ -315,6 +317,21 @@ class DeliveryAssignmentServiceImplTest {
             assertThatThrownBy(() -> deliveryAssignmentService.pickupDelivery(50L))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Cannot pickup delivery");
+        }
+
+        @Test
+        @DisplayName("pickupDelivery - should not save assignment if order transition fails")
+        void pickupDelivery_orderTransitionFails_shouldNotSaveAssignment() {
+            deliveryAssignment.setStatus(DeliveryAssignmentStatus.ACCEPTED);
+            when(deliveryAssignmentRepository.findById(50L)).thenReturn(Optional.of(deliveryAssignment));
+            org.mockito.Mockito.doThrow(new IllegalStateException("Order transition failed"))
+                    .when(orderService).transitionOrderStatus(anyLong(), any(), any(), any());
+
+            assertThatThrownBy(() -> deliveryAssignmentService.pickupDelivery(50L))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Order transition failed");
+
+            verify(deliveryAssignmentRepository, never()).save(any());
         }
 
         @Test
@@ -331,11 +348,9 @@ class DeliveryAssignmentServiceImplTest {
 
             assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.DELIVERED);
             assertThat(response.deliveredAt()).isNotNull();
-            assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
-            assertThat(order.getDeliveredAt()).isNotNull();
             assertThat(riderProfile.getAvailability()).isTrue();
 
-            verify(orderRepository).save(order);
+            verify(orderService).transitionOrderStatus(eq(order.getId()), eq(OrderStatus.DELIVERED), eq(riderUser), anyString());
             verify(riderProfileRepository).save(riderProfile);
             verify(meterRegistry).counter("orders.status.changed", "status", "DELIVERED");
         }
@@ -356,6 +371,7 @@ class DeliveryAssignmentServiceImplTest {
             assertThat(response.status()).isEqualTo(DeliveryAssignmentStatus.DELIVERED);
             assertThat(riderProfile.getAvailability()).isFalse();
             verify(riderProfileRepository, never()).save(riderProfile);
+            verify(orderService).transitionOrderStatus(eq(order.getId()), eq(OrderStatus.DELIVERED), eq(riderUser), anyString());
         }
 
         @Test
@@ -367,6 +383,21 @@ class DeliveryAssignmentServiceImplTest {
             assertThatThrownBy(() -> deliveryAssignmentService.completeDelivery(50L))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Cannot complete delivery");
+        }
+
+        @Test
+        @DisplayName("completeDelivery - should not save assignment if order transition fails")
+        void completeDelivery_orderTransitionFails_shouldNotSaveAssignment() {
+            deliveryAssignment.setStatus(DeliveryAssignmentStatus.PICKED_UP);
+            when(deliveryAssignmentRepository.findById(50L)).thenReturn(Optional.of(deliveryAssignment));
+            org.mockito.Mockito.doThrow(new IllegalStateException("Order delivery transition failed"))
+                    .when(orderService).transitionOrderStatus(anyLong(), any(), any(), any());
+
+            assertThatThrownBy(() -> deliveryAssignmentService.completeDelivery(50L))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Order delivery transition failed");
+
+            verify(deliveryAssignmentRepository, never()).save(any());
         }
 
         @Test

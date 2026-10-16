@@ -11,15 +11,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
+@Tag(name = "Cart", description = "API for managing carts")
 public class CartController {
 
     private final CartService cartService;
 
+    @Operation(summary = "Get cart")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<CartResponseDto> getCart(@RequestParam Long userId) {
@@ -27,6 +31,7 @@ public class CartController {
         return ResponseEntity.ok(cartService.getCart(userId));
     }
 
+    @Operation(summary = "Add item to cart")
     @PostMapping("/items")
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<CartResponseDto> addItemToCart(
@@ -37,6 +42,7 @@ public class CartController {
                 .body(cartService.addItemToCart(userId, request, clearExisting));
     }
 
+    @Operation(summary = "Update cart item")
     @PutMapping("/items/{itemId}")
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<CartResponseDto> updateCartItem(
@@ -47,6 +53,7 @@ public class CartController {
         return ResponseEntity.ok(cartService.updateCartItemQuantity(userId, itemId, request));
     }
 
+    @Operation(summary = "Remove cart item")
     @DeleteMapping("/items/{itemId}")
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<CartResponseDto> removeCartItem(
@@ -56,6 +63,7 @@ public class CartController {
         return ResponseEntity.ok(cartService.removeCartItem(userId, itemId));
     }
 
+    @Operation(summary = "Clear cart")
     @DeleteMapping
     @PreAuthorize("hasRole('ADMIN') or @cartSecurity.isOwner(#userId, authentication)")
     public ResponseEntity<Void> clearCart(@RequestParam Long userId) {

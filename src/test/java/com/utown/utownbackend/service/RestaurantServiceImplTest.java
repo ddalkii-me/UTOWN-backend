@@ -171,15 +171,19 @@ class RestaurantServiceImplTest {
     // ── getAllRestaurants ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("getAllRestaurants - should return list of active restaurants")
+    @DisplayName("getAllRestaurants - should return list of active restaurants with batch-fetched working hours")
     void getAllRestaurants_shouldReturnList() {
         when(restaurantRepository.findAllByDeletedAtIsNull()).thenReturn(List.of(restaurant));
+        when(workingHoursRepository.findByRestaurantIdIn(List.of(1L))).thenReturn(List.of());
 
         List<RestaurantResponseDto> result = restaurantService.getAllRestaurants();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).name()).isEqualTo("Test Restaurant");
+        assertThat(result.get(0).isOpenNow()).isTrue();
         verify(restaurantRepository).findAllByDeletedAtIsNull();
+        verify(workingHoursRepository).findByRestaurantIdIn(List.of(1L));
+        verify(workingHoursRepository, never()).findByRestaurantId(anyLong());
     }
 
     // ── getRestaurantById ────────────────────────────────────────────
@@ -385,5 +389,112 @@ class RestaurantServiceImplTest {
         assertThatThrownBy(() -> restaurantService.getWorkingHours(99L))
                 .isInstanceOf(EntityNotFoundException.class);
         verify(workingHoursRepository, never()).findByRestaurantId(anyLong());
+    }
+
+    @Test
+    @DisplayName("isOpenAt - normal hours and boundaries")
+    void isOpenAt_normalHours() {
+        RestaurantWorkingHours hours = new RestaurantWorkingHours(restaurant, DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(22, 0), false);
+        when(workingHoursRepository.findByRestaurantId(1L)).thenReturn(List.of(hours));
+
+        // Exact opening time (09:00:00) -> Open
+        java.time.ZonedDateTime exactOpen = java.time.ZonedDateTime.of(2023, 10, 16, 9, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, exactOpen)).isTrue();
+
+        // Daytime within window (12:00:00) -> Open
+        java.time.ZonedDateTime midday = java.time.ZonedDateTime.of(2023, 10, 16, 12, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, midday)).isTrue();
+
+        // Just before closing (21:59:59) -> Open
+        java.time.ZonedDateTime justBeforeClose = java.time.ZonedDateTime.of(2023, 10, 16, 21, 59, 59, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, justBeforeClose)).isTrue();
+
+        // Exact closing time (22:00:00) -> Closed
+        java.time.ZonedDateTime exactClose = java.time.ZonedDateTime.of(2023, 10, 16, 22, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, exactClose)).isFalse();
+
+        // Just before opening (08:59:59) -> Closed
+        java.time.ZonedDateTime justBeforeOpen = java.time.ZonedDateTime.of(2023, 10, 16, 8, 59, 59, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, justBeforeOpen)).isFalse();
+
+        // After close (23:00) -> Closed
+        java.time.ZonedDateTime afterClose = java.time.ZonedDateTime.of(2023, 10, 16, 23, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, afterClose)).isFalse();
+    }
+
+    @Test
+    @DisplayName("isOpenAt - overnight hours boundaries and daytime regression")
+    void isOpenAt_overnightHours() {
+        // Monday 18:00 to 02:00
+        RestaurantWorkingHours hours = new RestaurantWorkingHours(restaurant, DayOfWeek.MONDAY, LocalTime.of(18, 0), LocalTime.of(2, 0), false);
+        when(workingHoursRepository.findByRestaurantId(1L)).thenReturn(List.of(hours));
+
+        // Exact opening time Monday 18:00:00 -> Open
+        java.time.ZonedDateTime exactOpen = java.time.ZonedDateTime.of(2023, 10, 16, 18, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, exactOpen)).isTrue();
+
+        // Monday 20:00 -> Open
+        java.time.ZonedDateTime time1 = java.time.ZonedDateTime.of(2023, 10, 16, 20, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul")); 
+        assertThat(restaurantService.isOpenAt(1L, time1)).isTrue();
+
+        // Monday 23:59:59 -> Open
+        java.time.ZonedDateTime lateNight = java.time.ZonedDateTime.of(2023, 10, 16, 23, 59, 59, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, lateNight)).isTrue();
+
+        // Tuesday 00:00:00 -> Open (overnight continuation)
+        java.time.ZonedDateTime midnight = java.time.ZonedDateTime.of(2023, 10, 17, 0, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, midnight)).isTrue();
+
+        // Tuesday 01:00 -> Open
+        java.time.ZonedDateTime time2 = java.time.ZonedDateTime.of(2023, 10, 17, 1, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul")); 
+        assertThat(restaurantService.isOpenAt(1L, time2)).isTrue();
+
+        // Tuesday 01:59:59 (Just before closing) -> Open
+        java.time.ZonedDateTime justBeforeClose = java.time.ZonedDateTime.of(2023, 10, 17, 1, 59, 59, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, justBeforeClose)).isTrue();
+
+        // Exact closing time Tuesday 02:00:00 -> Closed
+        java.time.ZonedDateTime exactClose = java.time.ZonedDateTime.of(2023, 10, 17, 2, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, exactClose)).isFalse();
+
+        // Early morning: Tuesday 03:00:00 -> Closed
+        java.time.ZonedDateTime earlyMorning = java.time.ZonedDateTime.of(2023, 10, 17, 3, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul")); 
+        assertThat(restaurantService.isOpenAt(1L, earlyMorning)).isFalse();
+
+        // Early morning: Tuesday 06:00:00 -> Closed
+        java.time.ZonedDateTime morning = java.time.ZonedDateTime.of(2023, 10, 17, 6, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul")); 
+        assertThat(restaurantService.isOpenAt(1L, morning)).isFalse();
+
+        // Daytime: Monday 12:00:00 (before opening on Monday) -> Closed
+        java.time.ZonedDateTime mondayMidday = java.time.ZonedDateTime.of(2023, 10, 16, 12, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, mondayMidday)).isFalse();
+
+        // Daytime: Monday 17:59:59 (just before opening) -> Closed
+        java.time.ZonedDateTime justBeforeOpen = java.time.ZonedDateTime.of(2023, 10, 16, 17, 59, 59, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, justBeforeOpen)).isFalse();
+
+        // Daytime: Tuesday 12:00:00 -> Closed
+        java.time.ZonedDateTime tuesdayMidday = java.time.ZonedDateTime.of(2023, 10, 17, 12, 0, 0, 0, java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(restaurantService.isOpenAt(1L, tuesdayMidday)).isFalse();
+    }
+
+    @Test
+    @DisplayName("getRestaurantById - should report isOpenNow false when restaurant status is CLOSED")
+    void getRestaurantById_whenStatusClosed_isOpenNowIsFalse() {
+        restaurant.setStatus(RestaurantStatus.CLOSED);
+        when(restaurantRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(restaurant));
+
+        RestaurantResponseDto result = restaurantService.getRestaurantById(1L);
+
+        assertThat(result.isOpenNow()).isFalse();
+    }
+
+    @Test
+    @DisplayName("isOpenAt - when restaurant has no working hours configured, defaults to open")
+    void isOpenAt_whenNoHoursConfigured_returnsTrue() {
+        when(workingHoursRepository.findByRestaurantId(1L)).thenReturn(List.of());
+
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now();
+        assertThat(restaurantService.isOpenAt(1L, now)).isTrue();
     }
 }
