@@ -85,7 +85,10 @@ public class SecurityConfig {
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // All endpoints remain publicly accessible for now; AuthZ teammate will configure endpoint restrictions
+                        // Actuator endpoints
+                        .requestMatchers("/actuator/health/**", "/actuator/info/**", "/actuator/prometheus/**").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
+                        // All other endpoints remain publicly accessible for now; AuthZ teammate will configure endpoint restrictions
                         .anyRequest().permitAll()
                 );
 

@@ -32,6 +32,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
     private final DeliveryAssignmentRepository deliveryAssignmentRepository;
     private final OrderRepository orderRepository;
     private final RiderProfileRepository riderProfileRepository;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
     @Override
     public DeliveryAssignmentResponseDto createAssignment(DeliveryAssignmentRequestDto request) {
@@ -179,6 +180,7 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
             order.setStatus(OrderStatus.DELIVERED);
             order.setDeliveredAt(LocalDateTime.now());
             orderRepository.save(order);
+            meterRegistry.counter("orders.status.changed", "status", "DELIVERED").increment();
         }
 
         RiderProfile rider = assignment.getRider();

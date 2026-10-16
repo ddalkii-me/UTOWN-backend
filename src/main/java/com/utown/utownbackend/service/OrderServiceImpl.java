@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import com.utown.utownbackend.security.CustomUserDetails;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -44,6 +45,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemOptionRepository cartItemOptionRepository;
     private final RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
     private final SocketIONotificationService socketIONotificationService;
+    private final MeterRegistry meterRegistry;
 
     private record PreparedItem(
             Dish dish,
@@ -237,6 +239,8 @@ public class OrderServiceImpl implements OrderService {
                 response
         );
 
+        meterRegistry.counter("orders.created", "restaurantId", restaurant.getId().toString()).increment();
+
         return response;
     }
 
@@ -350,6 +354,7 @@ public class OrderServiceImpl implements OrderService {
                 toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
 
         sendOrderStatusUpdate(savedOrder, response);
+        meterRegistry.counter("orders.status.changed", "status", "ACCEPTED").increment();
 
         return response;
     }
@@ -375,6 +380,7 @@ public class OrderServiceImpl implements OrderService {
                 toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
 
         sendOrderStatusUpdate(savedOrder, response);
+        meterRegistry.counter("orders.status.changed", "status", "IN_PREPARATION").increment();
 
         return response;
     }
@@ -399,6 +405,7 @@ public class OrderServiceImpl implements OrderService {
                 toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
 
         sendOrderStatusUpdate(savedOrder, response);
+        meterRegistry.counter("orders.status.changed", "status", "COMPLETED").increment();
 
         return response;
     }
@@ -426,6 +433,7 @@ public class OrderServiceImpl implements OrderService {
                 toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
 
         sendOrderStatusUpdate(savedOrder, response);
+        meterRegistry.counter("orders.status.changed", "status", "DECLINED").increment();
 
         return response;
     }
@@ -615,6 +623,8 @@ public class OrderServiceImpl implements OrderService {
                 response
         );
 
+        meterRegistry.counter("orders.created", "restaurantId", restaurant.getId().toString()).increment();
+
         return response;
     }
 
@@ -639,6 +649,7 @@ public class OrderServiceImpl implements OrderService {
                 toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
 
         sendOrderStatusUpdate(savedOrder, response);
+        meterRegistry.counter("orders.status.changed", "status", "READY_FOR_PICKUP").increment();
 
         return response;
     }
@@ -668,6 +679,7 @@ public class OrderServiceImpl implements OrderService {
                 toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
 
         sendOrderStatusUpdate(savedOrder, response);
+        meterRegistry.counter("orders.status.changed", "status", "CANCELLED").increment();
 
         return response;
     }

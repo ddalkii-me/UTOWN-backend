@@ -39,6 +39,12 @@ class DeliveryAssignmentServiceImplTest {
     @Mock
     private RiderProfileRepository riderProfileRepository;
 
+    @Mock
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
+    @Mock
+    private io.micrometer.core.instrument.Counter counter;
+
     @InjectMocks
     private DeliveryAssignmentServiceImpl deliveryAssignmentService;
 
@@ -51,6 +57,12 @@ class DeliveryAssignmentServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        if (meterRegistry != null) {
+            org.mockito.Mockito.lenient().when(meterRegistry.counter(
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(String[].class)
+            )).thenReturn(counter);
+        }
         customer = TestDataFactory.createUser(1L);
         customer.setRole(UserRole.CUSTOMER);
 
@@ -325,6 +337,7 @@ class DeliveryAssignmentServiceImplTest {
 
             verify(orderRepository).save(order);
             verify(riderProfileRepository).save(riderProfile);
+            verify(meterRegistry).counter("orders.status.changed", "status", "DELIVERED");
         }
 
         @Test

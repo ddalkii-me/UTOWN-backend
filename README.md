@@ -210,6 +210,24 @@ If developing locally without Docker, you can connect to an existing MySQL insta
 
 ---
 
+## Monitoring & Profiles
+
+### Profiles
+
+The application uses Spring Profiles to distinguish between environments. You can set the active profile via the `SPRING_PROFILES_ACTIVE` environment variable (defaults to `dev`).
+* **`dev` Profile:** Enables detailed SQL logging for debugging.
+* **`prod` Profile:** Disables SQL logging and enables strict security configurations.
+
+### Actuator & Metrics
+
+Spring Boot Actuator and Micrometer are integrated for application health monitoring and metrics.
+* **Health Check (`/actuator/health`):** Used by Docker Compose to verify application readiness. Publicly accessible.
+* **App Info (`/actuator/info`):** Publicly accessible application info.
+* **Prometheus Metrics (`/actuator/prometheus`):** Exposes application metrics (including custom business metrics like `orders.created` and `orders.status.changed`) for Prometheus scraping. Publicly accessible.
+* **Other Actuator Endpoints (`/actuator/**`):** Secured and requires the `ADMIN` role.
+
+---
+
 ## API Quick Reference
 
 ### Authentication Endpoints (`/api/auth`)
