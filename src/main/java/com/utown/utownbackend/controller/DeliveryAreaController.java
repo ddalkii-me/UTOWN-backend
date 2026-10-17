@@ -12,15 +12,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/delivery-areas")
 @RequiredArgsConstructor
+@Tag(name = "Delivery Area", description = "API for managing delivery areas")
 public class DeliveryAreaController {
 
     private final DeliveryAreaService deliveryAreaService;
 
+    @Operation(summary = "Create delivery area")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DeliveryAreaResponseDto> createDeliveryArea(
@@ -35,6 +39,7 @@ public class DeliveryAreaController {
                 .body(response);
     }
 
+    @Operation(summary = "Get delivery area by id")
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DeliveryAreaResponseDto>> getAllDeliveryAreas() {
@@ -46,6 +51,7 @@ public class DeliveryAreaController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Get delivery area by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<DeliveryAreaResponseDto> getDeliveryAreaById(
@@ -58,6 +64,7 @@ public class DeliveryAreaController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update delivery area")
     @GetMapping("/city/{cityId}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DeliveryAreaResponseDto>> getDeliveryAreasByCity(
@@ -70,6 +77,7 @@ public class DeliveryAreaController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update delivery area")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DeliveryAreaResponseDto> updateDeliveryArea(
@@ -83,6 +91,7 @@ public class DeliveryAreaController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Delete delivery area")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDeliveryArea(

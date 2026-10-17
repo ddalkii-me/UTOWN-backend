@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final com.utown.utownbackend.repository.UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -63,19 +64,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     Long userId = jwtUtil.extractClaim(token, claims -> claims.get("userId", Long.class));
                     
-                    com.utown.utownbackend.entity.User proxyUser = new com.utown.utownbackend.entity.User();
-                    proxyUser.setId(userId);
-                    proxyUser.setPhone(phone);
-                    if (roles != null && !roles.isEmpty()) {
-                        try {
-                            String roleStr = roles.get(0).replace("ROLE_", "");
-                            proxyUser.setRole(com.utown.utownbackend.entity.UserRole.valueOf(roleStr));
-                        } catch (Exception ignored) {
-                        }
+                    com.utown.utownbackend.entity.User dbUser = userRepository.findById(userId).orElse(null);
+                    if (dbUser == null) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("User not found");
+                        return;
                     }
-                    proxyUser.setStatus(com.utown.utownbackend.entity.UserStatus.ACTIVE);
 
-                    UserDetails userDetails = new CustomUserDetails(proxyUser);
+                    UserDetails userDetails = new CustomUserDetails(dbUser);
 
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                             userDetails,

@@ -4,6 +4,7 @@ import com.utown.utownbackend.dto.*;
 import com.utown.utownbackend.entity.*;
 import com.utown.utownbackend.repository.*;
 import com.utown.utownbackend.security.CustomUserDetails;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -23,6 +24,10 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.utown.utownbackend.exception.InvalidOrderStatusTransitionException;
+import com.utown.utownbackend.exception.PaymentFailedException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @Slf4j
@@ -44,6 +49,9 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemOptionRepository cartItemOptionRepository;
     private final RestaurantDeliveryAreaRepository restaurantDeliveryAreaRepository;
     private final SocketIONotificationService socketIONotificationService;
+    private final MeterRegistry meterRegistry;
+    private final PaymentGateway paymentGateway;
+    private final RestaurantService restaurantService;
 
     private record PreparedItem(
             Dish dish,
@@ -54,7 +62,7 @@ public class OrderServiceImpl implements OrderService {
     ) {}
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = PaymentFailedException.class)
     public OrderResponseDto createOrder(OrderRequestDto request) {
         log.info("Executing createOrder");
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -72,6 +80,10 @@ public class OrderServiceImpl implements OrderService {
 
         if (restaurant.getStatus() == RestaurantStatus.CLOSED) {
             throw new IllegalArgumentException("Cannot place order: Restaurant is closed");
+        }
+
+        if (!restaurantService.isOpenAt(restaurant.getId(), java.time.ZonedDateTime.now())) {
+            throw new IllegalArgumentException("Cannot place order: Restaurant is outside working hours");
         }
 
         Address address = addressRepository.findByIdAndDeletedAtIsNull(request.addressId())
@@ -230,12 +242,18 @@ public class OrderServiceImpl implements OrderService {
             ));
         }
 
+        // Charge only once the order and its items are persisted, so the gateway
+        // receives a real order ID and nothing else can fail before the charge.
+        processPayment(savedOrder, user);
+
         OrderResponseDto response = toOrderResponseDto(savedOrder, itemResponseDtos);
 
         socketIONotificationService.sendNewOrder(
                 restaurant.getOwner().getId(),
                 response
         );
+
+        meterRegistry.counter("orders.created", "restaurantId", restaurant.getId().toString()).increment();
 
         return response;
     }
@@ -333,25 +351,10 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Order cannot be accepted from status: " + order.getStatus());
-        }
-
-        order.setStatus(OrderStatus.ACCEPTED);
-        order.setAcceptedAt(LocalDateTime.now());
         order.setEstimatedCookingMinutes(request.estimatedCookingMinutes());
-
-        Order savedOrder = orderRepository.save(order);
-        User actor = resolveActor(savedOrder);
-        recordStatusHistory(savedOrder, OrderStatus.ACCEPTED, actor,
+        
+        return transition(order, OrderStatus.ACCEPTED, resolveActor(order), 
                 "Estimated cooking time: " + request.estimatedCookingMinutes() + " mins");
-
-        OrderResponseDto response =
-                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
-
-        sendOrderStatusUpdate(savedOrder, response);
-
-        return response;
     }
 
     @Override
@@ -361,22 +364,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.ACCEPTED) {
-            throw new IllegalStateException("Order cannot be moved to preparation from status: " + order.getStatus());
-        }
-
-        order.setStatus(OrderStatus.IN_PREPARATION);
-
-        Order savedOrder = orderRepository.save(order);
-        User actor = resolveActor(savedOrder);
-        recordStatusHistory(savedOrder, OrderStatus.IN_PREPARATION, actor, null);
-
-        OrderResponseDto response =
-                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
-
-        sendOrderStatusUpdate(savedOrder, response);
-
-        return response;
+        return transition(order, OrderStatus.IN_PREPARATION, resolveActor(order), null);
     }
 
     @Override
@@ -386,21 +374,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw new IllegalStateException("Order cannot be completed from status: " + order.getStatus());
-        }
-        order.setStatus(OrderStatus.COMPLETED);
-
-        Order savedOrder = orderRepository.save(order);
-        User actor = resolveActor(savedOrder);
-        recordStatusHistory(savedOrder, OrderStatus.COMPLETED, actor, null);
-
-        OrderResponseDto response =
-                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
-
-        sendOrderStatusUpdate(savedOrder, response);
-
-        return response;
+        return transition(order, OrderStatus.COMPLETED, resolveActor(order), null);
     }
 
     @Override
@@ -410,28 +384,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findWithUserAndRestaurantOwnerById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Order cannot be declined from status: " + order.getStatus());
-        }
-
-        order.setStatus(OrderStatus.DECLINED);
-        order.setRejectedAt(LocalDateTime.now());
-        order.setRejectionReason(request.reason());
-
-        Order savedOrder = orderRepository.save(order);
-        User actor = resolveActor(savedOrder);
-        recordStatusHistory(savedOrder, OrderStatus.DECLINED, actor, request.reason());
-
-        OrderResponseDto response =
-                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
-
-        sendOrderStatusUpdate(savedOrder, response);
-
-        return response;
+        return transition(order, OrderStatus.DECLINED, resolveActor(order), request.reason());
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = PaymentFailedException.class)
     public OrderResponseDto checkout(CheckoutRequestDto request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails principal) {
@@ -461,6 +418,10 @@ public class OrderServiceImpl implements OrderService {
         Restaurant restaurant = cart.getRestaurant();
         if (restaurant.getStatus() == RestaurantStatus.CLOSED) {
             throw new IllegalArgumentException("Cannot place order: Restaurant is closed");
+        }
+
+        if (!restaurantService.isOpenAt(restaurant.getId(), java.time.ZonedDateTime.now())) {
+            throw new IllegalArgumentException("Cannot place order: Restaurant is outside working hours");
         }
 
         if (address.getDeliveryArea() == null || !restaurantDeliveryAreaRepository.existsByRestaurantIdAndDeliveryAreaIdAndDeletedAtIsNull(restaurant.getId(), address.getDeliveryArea().getId())) {
@@ -603,10 +564,14 @@ public class OrderServiceImpl implements OrderService {
             ));
         }
 
+        recordStatusHistory(savedOrder, OrderStatus.PENDING, user, "Order created via checkout");
+
+        // Charge before expiring the cart: if payment fails the cart stays active
+        // so the customer can retry with a different payment method.
+        processPayment(savedOrder, user);
+
         cart.setStatus(CartStatus.EXPIRED);
         cartRepository.save(cart);
-
-        recordStatusHistory(savedOrder, OrderStatus.PENDING, user, "Order created via checkout");
 
         OrderResponseDto response = toOrderResponseDto(savedOrder, orderItemDtos);
 
@@ -614,6 +579,8 @@ public class OrderServiceImpl implements OrderService {
                 restaurant.getOwner().getId(),
                 response
         );
+
+        meterRegistry.counter("orders.created", "restaurantId", restaurant.getId().toString()).increment();
 
         return response;
     }
@@ -624,23 +591,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.IN_PREPARATION) {
-            throw new IllegalStateException("Order cannot be marked ready for pickup from status: " + order.getStatus());
-        }
-
-        order.setStatus(OrderStatus.READY_FOR_PICKUP);
-        order.setReadyAt(LocalDateTime.now());
-
-        Order savedOrder = orderRepository.save(order);
-        User actor = resolveActor(savedOrder);
-        recordStatusHistory(savedOrder, OrderStatus.READY_FOR_PICKUP, actor, null);
-
-        OrderResponseDto response =
-                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
-
-        sendOrderStatusUpdate(savedOrder, response);
-
-        return response;
+        return transition(order, OrderStatus.READY_FOR_PICKUP, resolveActor(order), null);
     }
 
     @Override
@@ -649,27 +600,94 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + id));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Order cannot be cancelled from status: " + order.getStatus());
+        // transition() validates the status change before issuing any refund.
+        return transition(order, OrderStatus.CANCELLED, order.getUser(), request.reason());
+    }
+
+    private boolean requiresOnlinePayment(Order order) {
+        return order.getPaymentMethod() == PaymentMethod.CARD
+                || order.getPaymentMethod() == PaymentMethod.BANK_TRANSFER;
+    }
+
+    /**
+     * Charges the gateway for an already-persisted order.
+     * <p>
+     * On failure the order is marked {@code FAILED}/{@code CANCELLED} and a
+     * {@link PaymentFailedException} is thrown. Callers declare
+     * {@code noRollbackFor = PaymentFailedException.class} so the failed attempt
+     * is committed as an audit record instead of disappearing with a rollback.
+     * <p>
+     * On success a compensating refund is registered in case the surrounding
+     * transaction rolls back after the charge went through.
+     */
+    private void processPayment(Order order, User actor) {
+        if (!requiresOnlinePayment(order)) {
+            return;
         }
 
-        order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelledAt(LocalDateTime.now());
-        order.setRejectionReason(request.reason());
-        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+        PaymentResult paymentResult = paymentGateway.charge(order, order.getTotalAmount());
+        if (!paymentResult.success()) {
+            log.warn("Payment failed for order {}: {}", order.getId(), paymentResult.message());
+            String reason = "Payment failed: " + paymentResult.message();
+            order.setPaymentStatus(PaymentStatus.FAILED);
+            order.setStatus(OrderStatus.CANCELLED);
+            order.setCancelledAt(LocalDateTime.now());
+            order.setRejectionReason(reason);
+            orderRepository.save(order);
+            recordStatusHistory(order, OrderStatus.CANCELLED, actor, reason);
+            throw new PaymentFailedException(reason);
+        }
+
+        order.setPaymentStatus(PaymentStatus.PAID);
+        order.setPaymentTransactionId(paymentResult.transactionId());
+        orderRepository.save(order);
+        registerChargeCompensation(order, paymentResult.transactionId());
+    }
+
+    private void registerChargeCompensation(Order order, String transactionId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_ROLLED_BACK) {
+                    return;
+                }
+                log.warn("Transaction rolled back after charging order {}; issuing compensating refund for {}",
+                        order.getId(), transactionId);
+                try {
+                    PaymentResult refund = paymentGateway.refund(order, transactionId);
+                    if (!refund.success()) {
+                        log.error("Compensating refund failed for transaction {}: {}", transactionId, refund.message());
+                    }
+                } catch (RuntimeException ex) {
+                    log.error("Compensating refund threw for transaction {}", transactionId, ex);
+                }
+            }
+        });
+    }
+
+    /**
+     * Refunds an online payment when an order reaches a terminal state that
+     * means the customer will not receive it (CANCELLED or DECLINED).
+     * Payment status only becomes REFUNDED when the gateway confirms the refund.
+     */
+    private void refundIfPaid(Order order) {
+        if (order.getPaymentStatus() != PaymentStatus.PAID) {
+            return;
+        }
+        if (order.getPaymentTransactionId() == null) {
             order.setPaymentStatus(PaymentStatus.REFUNDED);
+            return;
         }
-
-        Order savedOrder = orderRepository.save(order);
-        User actor = order.getUser();
-        recordStatusHistory(savedOrder, OrderStatus.CANCELLED, actor, request.reason());
-
-        OrderResponseDto response =
-                toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
-
-        sendOrderStatusUpdate(savedOrder, response);
-
-        return response;
+        PaymentResult refundResult = paymentGateway.refund(order, order.getPaymentTransactionId());
+        if (!refundResult.success()) {
+            log.error("Refund failed for order {}: {}", order.getId(), refundResult.message());
+            throw new PaymentFailedException("Refund failed: " + refundResult.message());
+        }
+        order.setPaymentStatus(PaymentStatus.REFUNDED);
+        order.setRefundTransactionId(refundResult.transactionId());
     }
 
     private User resolveActor(Order order) {
@@ -789,5 +807,56 @@ public class OrderServiceImpl implements OrderService {
                 order.getCancelledAt(),
                 items
         );
+    }
+    @Override
+    @Transactional
+    public OrderResponseDto transitionOrderStatus(Long orderId, OrderStatus targetStatus, User actor, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found with id: " + orderId));
+        return transition(order, targetStatus, actor, reason);
+    }
+
+    private OrderResponseDto transition(Order order, OrderStatus targetStatus, User actor, String reason) {
+        if (!order.getStatus().canTransitionTo(targetStatus)) {
+            throw new InvalidOrderStatusTransitionException(order.getStatus(), targetStatus);
+        }
+        // Refund before mutating the order so a failed refund leaves it untouched.
+        if (targetStatus == OrderStatus.CANCELLED || targetStatus == OrderStatus.DECLINED) {
+            refundIfPaid(order);
+        }
+        order.setStatus(targetStatus);
+
+        LocalDateTime now = LocalDateTime.now();
+        switch (targetStatus) {
+            case ACCEPTED -> order.setAcceptedAt(now);
+            case READY_FOR_PICKUP -> order.setReadyAt(now);
+            case OUT_FOR_DELIVERY -> order.setPickedUpAt(now);
+            case DELIVERED -> {
+                order.setDeliveredAt(now);
+                if (order.getPaymentMethod() == PaymentMethod.CASH && order.getPaymentStatus() == PaymentStatus.PENDING) {
+                    order.setPaymentStatus(PaymentStatus.PAID);
+                }
+            }
+            case DECLINED -> {
+                order.setRejectedAt(now);
+                order.setRejectionReason(reason);
+            }
+            case CANCELLED -> {
+                order.setCancelledAt(now);
+                order.setRejectionReason(reason);
+            }
+            default -> {}
+        }
+
+        Order savedOrder = orderRepository.save(order);
+        recordStatusHistory(savedOrder, targetStatus, actor, reason);
+
+        OrderResponseDto response = toOrderResponseDto(savedOrder, getOrderItemResponseDtos(savedOrder.getId()));
+        sendOrderStatusUpdate(savedOrder, response);
+        if (targetStatus != OrderStatus.DELIVERED) {
+            meterRegistry.counter("orders.status.changed", "status", targetStatus.name()).increment();
+        }
+
+        return response;
     }
 }

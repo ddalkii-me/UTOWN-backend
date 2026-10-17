@@ -30,4 +30,7 @@ public class RiderProfile extends BaseEntity {
     @Column(nullable = false)
     private RiderStatus status;
 
+    @Version
+    private Long version;
+
 }

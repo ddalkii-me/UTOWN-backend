@@ -84,12 +84,52 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("Should include requestId in ProblemDetail when present in MDC")
+    void shouldIncludeRequestId() throws Exception {
+        org.slf4j.MDC.put(RequestCorrelationFilter.MDC_REQUEST_ID_KEY, "test-req-123");
+        try {
+            mockMvc.perform(get("/test/entity-not-found"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.requestId").value("test-req-123"));
+        } finally {
+            org.slf4j.MDC.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("Should include requestId in inherited handler ProblemDetail when present in MDC")
+    void shouldIncludeRequestIdInherited() throws Exception {
+        org.slf4j.MDC.put(RequestCorrelationFilter.MDC_REQUEST_ID_KEY, "test-req-456");
+        try {
+            mockMvc.perform(get("/test/items/abc"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.requestId").value("test-req-456"));
+        } finally {
+            org.slf4j.MDC.clear();
+        }
+    }
+
+    @Test
+    @DisplayName("RateLimitExceededException should return 429 with ProblemDetail")
+    void rateLimitExceeded_shouldReturn429() throws Exception {
+        mockMvc.perform(get("/test/rate-limit-exceeded"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.title").value("Too Many Requests"))
+                .andExpect(jsonPath("$.detail").value("Too many requests. Please try again later."));
+    }
+
     /**
      * Stub controller used only for testing exception handler mappings.
      */
     @RestController
     @RequestMapping("/test")
     public static class StubController {
+
+        @GetMapping("/rate-limit-exceeded")
+        public void rateLimitExceeded() {
+            throw new com.utown.utownbackend.exception.RateLimitExceededException("Too many requests. Please try again later.");
+        }
 
         @GetMapping("/entity-not-found")
         public void entityNotFound() {

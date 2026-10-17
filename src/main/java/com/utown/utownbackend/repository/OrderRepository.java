@@ -19,7 +19,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             "restaurant.owner",
             "user"
     })
-    Optional<Order> findWithUserAndRestaurantOwnerById(Long id);
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findWithUserAndRestaurantOwnerById(@Param("id") Long id);
 
 }
 

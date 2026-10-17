@@ -121,7 +121,7 @@ class MenuServiceCachingIntegrationTest {
     }
 
     @Test
-    void deletingDishEvictsCachedRestaurantMenu(){
+    void deletingDishEvictsCachedRestaurantMenu() throws InterruptedException {
         Long restaurantId = 20L;
         Long dishId = 200L;
 
@@ -145,6 +145,8 @@ class MenuServiceCachingIntegrationTest {
         // Load and cache the menu.
         menuService.getRestaurantMenu(restaurantId);
 
+        waitForCacheEntry(menuCache, restaurantId);
+
         Dish dish = new Dish();
         dish.setId(dishId);
 
@@ -159,6 +161,8 @@ class MenuServiceCachingIntegrationTest {
 
         verify(dishRepository).findByIdAndDeletedAtIsNull(dishId);
 
+        waitForCacheEviction(menuCache, restaurantId);
+
         assertNull(menuCache.get(restaurantId),
                 "Deleting a dish should evict the cached menu");
 
@@ -171,7 +175,7 @@ class MenuServiceCachingIntegrationTest {
 
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     @Test
-    void updatingCategoryEvictsCachedRestaurantMenu() {
+    void updatingCategoryEvictsCachedRestaurantMenu() throws InterruptedException {
         Long restaurantId = 30L;
         Long categoryId = 300L;
 
@@ -208,6 +212,8 @@ class MenuServiceCachingIntegrationTest {
         var firstResponse = menuService.getRestaurantMenu(restaurantId);
         assertTrue(firstResponse.categories().isEmpty());
 
+        waitForCacheEntry(menuCache, restaurantId);
+
         CategoryRequestDto request = new CategoryRequestDto(
                 restaurantId,
                 "Updated category",
@@ -219,6 +225,8 @@ class MenuServiceCachingIntegrationTest {
         categoryService.updateCategory(categoryId, request);
 
         verify(categoryRepository).findById(categoryId);
+
+        waitForCacheEviction(menuCache, restaurantId);
 
         var refreshedResponse = menuService.getRestaurantMenu(restaurantId);
 
@@ -244,5 +252,19 @@ class MenuServiceCachingIntegrationTest {
         }
 
         fail("Redis cache entry was not created for restaurant " + restaurantId);
+    }
+
+    private void waitForCacheEviction(Cache cache, Long restaurantId)
+            throws InterruptedException {
+
+        for (int attempt = 0; attempt < 50; attempt++) {
+            if (cache.get(restaurantId) == null) {
+                return;
+            }
+
+            Thread.sleep(100);
+        }
+
+        fail("Redis cache entry was not evicted for restaurant " + restaurantId);
     }
 }

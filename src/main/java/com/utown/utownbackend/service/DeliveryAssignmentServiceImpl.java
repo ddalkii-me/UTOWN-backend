@@ -32,6 +32,8 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
     private final DeliveryAssignmentRepository deliveryAssignmentRepository;
     private final OrderRepository orderRepository;
     private final RiderProfileRepository riderProfileRepository;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
+    private final OrderService orderService;
 
     @Override
     public DeliveryAssignmentResponseDto createAssignment(DeliveryAssignmentRequestDto request) {
@@ -147,16 +149,15 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
             throw new IllegalStateException("Cannot pickup delivery in status: " + assignment.getStatus());
         }
 
+        if (assignment.getOrder() != null) {
+            orderService.transitionOrderStatus(assignment.getOrder().getId(), OrderStatus.OUT_FOR_DELIVERY, assignment.getRider().getUser(), "Rider picked up order");
+        }
+
         assignment.setStatus(DeliveryAssignmentStatus.PICKED_UP);
         assignment.setPickedUpAt(LocalDateTime.now());
 
-        Order order = assignment.getOrder();
-        if (order != null) {
-            order.setPickedUpAt(LocalDateTime.now());
-            orderRepository.save(order);
-        }
-
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
+
         log.info("Rider picked up order for delivery assignment ID: {}", id);
         return mapToResponseDto(saved);
     }
@@ -171,15 +172,15 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
             throw new IllegalStateException("Cannot complete delivery in status: " + assignment.getStatus());
         }
 
+        if (assignment.getOrder() != null) {
+            orderService.transitionOrderStatus(assignment.getOrder().getId(), OrderStatus.DELIVERED, assignment.getRider().getUser(), "Order delivered");
+        }
+
         assignment.setStatus(DeliveryAssignmentStatus.DELIVERED);
         assignment.setDeliveredAt(LocalDateTime.now());
 
-        Order order = assignment.getOrder();
-        if (order != null) {
-            order.setStatus(OrderStatus.DELIVERED);
-            order.setDeliveredAt(LocalDateTime.now());
-            orderRepository.save(order);
-        }
+        DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
+        meterRegistry.counter("orders.status.changed", "status", "DELIVERED").increment();
 
         RiderProfile rider = assignment.getRider();
         if (rider != null && rider.getStatus() == RiderStatus.ACTIVE) {
@@ -187,7 +188,6 @@ public class DeliveryAssignmentServiceImpl implements DeliveryAssignmentService 
             riderProfileRepository.save(rider);
         }
 
-        DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
         log.info("Delivery completed for assignment ID: {}", id);
         return mapToResponseDto(saved);
     }

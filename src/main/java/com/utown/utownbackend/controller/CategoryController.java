@@ -12,15 +12,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
+@Tag(name = "Category", description = "API for managing categorys")
 public class CategoryController {
 
     private final CategoryService categoryService;
 
+    @Operation(summary = "Create category")
     @PostMapping
     @PreAuthorize(
             "hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #request.restaurantId())"
@@ -33,6 +37,7 @@ public class CategoryController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+    @Operation(summary = "Get category by id")
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<CategoryResponseDto>> getAllCategories(
@@ -43,6 +48,7 @@ public class CategoryController {
 
         return ResponseEntity.ok(categories);
     }
+    @Operation(summary = "Get category by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<CategoryResponseDto> getCategoryById(
@@ -54,6 +60,7 @@ public class CategoryController {
 
         return ResponseEntity.ok(response);
     }
+    @Operation(summary = "Update category")
     @PutMapping("/{id}")
     @PreAuthorize(
             "hasRole('ADMIN') or @categorySecurity.isOwner(authentication, #id)"
@@ -68,6 +75,7 @@ public class CategoryController {
 
         return ResponseEntity.ok(response);
     }
+    @Operation(summary = "Delete category")
     @DeleteMapping("/{id}")
     @PreAuthorize(
             "hasRole('ADMIN') or @categorySecurity.isOwner(authentication, #id)"

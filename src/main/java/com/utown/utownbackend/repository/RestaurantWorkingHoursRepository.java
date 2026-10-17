@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface RestaurantWorkingHoursRepository extends JpaRepository<RestaurantWorkingHours, Long> {
     Optional<RestaurantWorkingHours> findByRestaurantIdAndDayOfWeek(Long restaurantId, DayOfWeek dayOfWeek);
     List<RestaurantWorkingHours> findByRestaurantId(Long restaurantId);
+    List<RestaurantWorkingHours> findByRestaurantIdIn(java.util.Collection<Long> restaurantIds);
 }

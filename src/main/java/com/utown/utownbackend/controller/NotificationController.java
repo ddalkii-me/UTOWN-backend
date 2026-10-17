@@ -13,15 +13,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@Tag(name = "Notification", description = "API for managing notifications")
 public class NotificationController {
 
     private final NotificationService notificationService;
 
+    @Operation(summary = "Create notification")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<NotificationResponseDto> createNotification(
@@ -46,6 +50,7 @@ public class NotificationController {
         return ResponseEntity.ok(list);
     }
 
+    @Operation(summary = "Get notification by id")
     @GetMapping("/{id}")
     @PreAuthorize("""
             hasRole('ADMIN') or
@@ -67,6 +72,7 @@ public class NotificationController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Get unread count")
     @GetMapping("/unread-count")
     @PreAuthorize("""
             hasRole('ADMIN') or
@@ -81,6 +87,7 @@ public class NotificationController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Mark as read")
     @PatchMapping("/{id}/read")
     @PreAuthorize("""
             hasRole('ADMIN') or
@@ -102,6 +109,7 @@ public class NotificationController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Mark all as read")
     @PatchMapping("/read-all")
     @PreAuthorize("""
             hasRole('ADMIN') or
@@ -116,6 +124,7 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Delete notification")
     @DeleteMapping("/{id}")
     @PreAuthorize("""
             hasRole('ADMIN') or

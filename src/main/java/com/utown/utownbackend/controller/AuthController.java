@@ -13,15 +13,29 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "Auth", description = "API for managing auths")
 public class AuthController {
 
     private final AuthService authService;
+    private final com.utown.utownbackend.service.UserService userService;
 
+    @org.springframework.web.bind.annotation.GetMapping("/me")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    public ResponseEntity<com.utown.utownbackend.dto.UserProfileResponseDto> getCurrentUser(java.security.Principal principal) {
+        if (principal == null) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+        return ResponseEntity.ok(userService.getCurrentUserProfile(principal.getName()));
+    }
+
+    @Operation(summary = "Register")
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDto> register(@Valid @RequestBody RegisterRequestDto request) {
         log.debug("Entering register method");
@@ -29,6 +43,7 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Login")
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
         log.debug("Entering login method");
@@ -36,6 +51,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Refresh token")
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDto> refreshToken(@Valid @RequestBody com.utown.utownbackend.dto.TokenRefreshRequestDto request) {
         log.debug("Entering refreshToken method");
@@ -43,6 +59,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Logout")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(java.security.Principal principal) {
         log.debug("Entering logout method with principal={}", principal);

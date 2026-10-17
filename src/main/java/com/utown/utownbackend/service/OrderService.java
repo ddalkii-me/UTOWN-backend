@@ -20,6 +20,7 @@ public interface OrderService {
     OrderResponseDto completeOrder(Long id);
     OrderResponseDto declineOrder(Long id, OrderDeclineRequestDto request);
     OrderResponseDto cancelOrder(Long id, OrderCancelRequestDto request);
+    OrderResponseDto transitionOrderStatus(Long orderId, OrderStatus targetStatus, com.utown.utownbackend.entity.User actor, String reason);
 }
 
 

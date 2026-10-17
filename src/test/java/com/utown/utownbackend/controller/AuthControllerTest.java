@@ -40,6 +40,9 @@ class AuthControllerTest {
     @MockitoBean
     private AuthService authService;
 
+    @MockitoBean
+    private com.utown.utownbackend.service.UserService userService;
+
     @Test
     @DisplayName("register - success returns 201 Created")
     void register_success() throws Exception {

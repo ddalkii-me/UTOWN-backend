@@ -12,15 +12,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/dish-options")
 @RequiredArgsConstructor
+@Tag(name = "Dish Option", description = "API for managing dish options")
 public class DishOptionController {
 
     private final DishOptionService dishOptionService;
 
+    @Operation(summary = "Create dish option")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or @dishOptionSecurity.isOwnerOfOptionGroup(authentication, #request.optionGroupId())")
     public ResponseEntity<DishOptionResponseDto> createDishOption(
@@ -38,6 +42,7 @@ public class DishOptionController {
         return ResponseEntity.ok(dishOptionService.getAllDishOptions());
     }
 
+    @Operation(summary = "Get dish option by id")
     @GetMapping("/group/{optionGroupId}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishOptionResponseDto>> getDishOptionsByGroupId(
@@ -47,6 +52,7 @@ public class DishOptionController {
         return ResponseEntity.ok(dishOptionService.getDishOptionsByGroupId(optionGroupId));
     }
 
+    @Operation(summary = "Get dish option by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<DishOptionResponseDto> getDishOptionById(
@@ -56,6 +62,7 @@ public class DishOptionController {
         return ResponseEntity.ok(dishOptionService.getDishOptionById(id));
     }
 
+    @Operation(summary = "Update dish option")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @dishOptionSecurity.isOwner(authentication, #id)")
     public ResponseEntity<DishOptionResponseDto> updateDishOption(
@@ -66,6 +73,7 @@ public class DishOptionController {
         return ResponseEntity.ok(dishOptionService.updateDishOption(id, request));
     }
 
+    @Operation(summary = "Delete dish option")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @dishOptionSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteDishOption(

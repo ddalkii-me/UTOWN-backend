@@ -11,15 +11,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Tag(name = "Rating", description = "API for managing ratings")
 public class RatingController {
 
     private final RatingService ratingService;
 
+    @Operation(summary = "Create rating")
     @PostMapping("/orders/{orderId}/ratings")
     @PreAuthorize("hasRole('ADMIN') or @orderSecurity.isCustomer(authentication, #orderId)")
     public ResponseEntity<RatingResponseDto> createRating(
@@ -35,6 +39,7 @@ public class RatingController {
         return ResponseEntity.status(201).body(response);
     }
 
+    @Operation(summary = "Get rating by id")
     @GetMapping("/restaurants/{restaurantId}/ratings")
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<RatingResponseDto>> getRatingsByRestaurant(
@@ -46,6 +51,7 @@ public class RatingController {
         );
     }
 
+    @Operation(summary = "Get rating by id")
     @GetMapping("/ratings/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('RESTAURANT_OWNER')")
     public ResponseEntity<RatingResponseDto> getRatingById(
@@ -57,6 +63,7 @@ public class RatingController {
         );
     }
 
+    @Operation(summary = "Delete rating")
     @DeleteMapping("/ratings/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRating(

@@ -14,10 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/dishes")
+@Tag(name = "Dish", description = "API for managing dishs")
 public class DishController {
 
     final DishService dishService;
@@ -26,6 +29,7 @@ public class DishController {
         this.dishService = dishService;
     }
 
+    @Operation(summary = "Create dish")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #request.restaurantId())")
     public ResponseEntity<DishResponseDto> createDish(
@@ -36,6 +40,7 @@ public class DishController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "Get dish by id")
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<DishResponseDto>> getDishes(
@@ -48,6 +53,7 @@ public class DishController {
         return ResponseEntity.ok(dishes);
     }
 
+    @Operation(summary = "Get dish by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<DishResponseDto> getDishById(
@@ -58,6 +64,7 @@ public class DishController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update dish by id")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwner(authentication, #id)")
     public ResponseEntity<DishResponseDto> updateDishById(
@@ -68,6 +75,7 @@ public class DishController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Delete dish by id")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteDishById(
@@ -78,6 +86,7 @@ public class DishController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Restore dish by id")
     @PutMapping("/{id}/restore")
     @PreAuthorize("hasRole('ADMIN') or @dishSecurity.isOwnerOfDeletedDish(authentication, #id)")
     public ResponseEntity<Void> restoreDishById(

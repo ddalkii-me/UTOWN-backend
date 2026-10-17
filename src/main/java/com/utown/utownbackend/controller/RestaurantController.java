@@ -15,16 +15,20 @@ import java.io.IOException;
 import java.time.DayOfWeek;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/restaurants")
 @RequiredArgsConstructor
+@Tag(name = "Restaurant", description = "API for managing restaurants")
 public class RestaurantController {
 
     private final RestaurantService restaurantService;
     private final MenuService menuService;
 
+    @Operation(summary = "Create restaurant")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantResponseDto> createRestaurant(
@@ -39,6 +43,7 @@ public class RestaurantController {
                 .body(response);
     }
 
+    @Operation(summary = "Get restaurant by id")
     @GetMapping
     @PreAuthorize("permitAll()")
     public ResponseEntity<List<RestaurantResponseDto>> getAllRestaurants() {
@@ -50,6 +55,7 @@ public class RestaurantController {
         return ResponseEntity.ok(restaurants);
     }
 
+    @Operation(summary = "Get restaurant by id")
     @GetMapping("/{id}")
     @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantResponseDto> getRestaurantById(
@@ -62,6 +68,7 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Get restaurant menu")
     @GetMapping("/{id}/menu")
     @PreAuthorize("permitAll()")
     public ResponseEntity<RestaurantMenuResponseDto> getRestaurantMenu(
@@ -85,6 +92,7 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update working hour for day")
     @PutMapping("/{id}/working-hours/{dayOfWeek}")
     @PreAuthorize(
             "hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #id)"
@@ -99,6 +107,7 @@ public class RestaurantController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Update restaurant")
     @PutMapping("/{id}")
     @PreAuthorize("@restaurantSecurity.isOwner(authentication, #id)")
     public ResponseEntity<RestaurantResponseDto> updateRestaurant(
@@ -112,6 +121,7 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update restaurant as admin")
     @PutMapping("/{id}/admin")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RestaurantResponseDto> updateRestaurantAsAdmin(
@@ -125,6 +135,7 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Delete restaurant")
     @DeleteMapping("/{id}")
     @PreAuthorize(
             "hasRole('ADMIN') or @restaurantSecurity.isOwner(authentication, #id)"

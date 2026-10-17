@@ -13,15 +13,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/addresses")
 @RequiredArgsConstructor
+@Tag(name = "Address", description = "API for managing addresss")
 public class AddressController {
 
     private final AddressService addressService;
 
+    @Operation(summary = "Create address")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #request.userId() == authentication.principal.id)")
     public ResponseEntity<AddressResponseDto> createAddress(
@@ -43,6 +47,7 @@ public class AddressController {
         );
     }
 
+    @Operation(summary = "Get address by id")
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<List<AddressResponseDto>> getAddressesByUser(
@@ -54,6 +59,7 @@ public class AddressController {
         );
     }
 
+    @Operation(summary = "Get address by id")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<AddressResponseDto> getAddressById(
@@ -65,6 +71,7 @@ public class AddressController {
         );
     }
 
+    @Operation(summary = "Update address")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<AddressResponseDto> updateAddress(
@@ -77,6 +84,7 @@ public class AddressController {
         );
     }
 
+    @Operation(summary = "Delete address")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @addressSecurity.isOwner(authentication, #id)")
     public ResponseEntity<Void> deleteAddress(

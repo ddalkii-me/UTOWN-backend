@@ -35,5 +35,7 @@ public interface RestaurantService {
 
     List<WorkingHoursDto> getWorkingHours(Long restaurantId);
 
+    boolean isOpenAt(Long restaurantId, java.time.ZonedDateTime zonedDateTime);
+
     RestaurantResponseDto uploadRestaurantLogo(Long id, MultipartFile file) throws IOException;
 }

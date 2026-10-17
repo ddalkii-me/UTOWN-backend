@@ -14,7 +14,13 @@ import org.springframework.cache.CacheManager;
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -73,8 +79,22 @@ public class RestaurantServiceImpl implements RestaurantService {
         List<Restaurant> restaurants =
                 restaurantRepository.findAllByDeletedAtIsNull();
 
+        if (restaurants.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> restaurantIds = restaurants.stream().map(BaseEntity::getId).toList();
+        List<RestaurantWorkingHours> allHours = workingHoursRepository.findByRestaurantIdIn(restaurantIds);
+        Map<Long, List<RestaurantWorkingHours>> hoursMap = allHours.stream()
+                .collect(Collectors.groupingBy(h -> h.getRestaurant().getId()));
+
+        ZonedDateTime now = ZonedDateTime.now();
         return restaurants.stream()
-                .map(this::toDto)
+                .map(restaurant -> {
+                    boolean isOpenNow = restaurant.getStatus() == RestaurantStatus.OPEN
+                            && isHoursOpenAt(hoursMap.get(restaurant.getId()), now);
+                    return toDto(restaurant, isOpenNow);
+                })
                 .toList();
     }
 
@@ -223,6 +243,65 @@ public class RestaurantServiceImpl implements RestaurantService {
         return restaurantLogoUpdateService.updateLogoUrl(id, logoKey);
     }
 
+    @Override
+    public boolean isOpenAt(Long restaurantId, ZonedDateTime zonedDateTime) {
+        List<RestaurantWorkingHours> allHours = workingHoursRepository.findByRestaurantId(restaurantId);
+        return isHoursOpenAt(allHours, zonedDateTime);
+    }
+
+    public static boolean isHoursOpenAt(List<RestaurantWorkingHours> allHours, ZonedDateTime zonedDateTime) {
+        if (allHours == null || allHours.isEmpty()) {
+            // Restaurants without configured hours can still take orders
+            return true;
+        }
+
+        ZonedDateTime seoulTime = zonedDateTime.withZoneSameInstant(ZoneId.of("Asia/Seoul"));
+        DayOfWeek currentDay = seoulTime.getDayOfWeek();
+        LocalTime currentTime = seoulTime.toLocalTime();
+
+        Optional<RestaurantWorkingHours> todayHoursOpt = allHours.stream()
+                .filter(h -> h.getDayOfWeek() == currentDay)
+                .findFirst();
+
+        if (todayHoursOpt.isPresent()) {
+            RestaurantWorkingHours today = todayHoursOpt.get();
+            if (!today.isDayOff()) {
+                if (today.getOpenTime() != null && today.getCloseTime() != null) {
+                    if (today.getOpenTime().isBefore(today.getCloseTime())) {
+                        if (!currentTime.isBefore(today.getOpenTime()) && currentTime.isBefore(today.getCloseTime())) {
+                            return true;
+                        }
+                    } else if (today.getOpenTime().isAfter(today.getCloseTime())) {
+                        // overnight, e.g. 18:00 to 02:00
+                        if (!currentTime.isBefore(today.getOpenTime())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        DayOfWeek previousDay = currentDay.minus(1);
+        Optional<RestaurantWorkingHours> yesterdayHoursOpt = allHours.stream()
+                .filter(h -> h.getDayOfWeek() == previousDay)
+                .findFirst();
+
+        if (yesterdayHoursOpt.isPresent()) {
+            RestaurantWorkingHours yesterday = yesterdayHoursOpt.get();
+            if (!yesterday.isDayOff()) {
+                if (yesterday.getOpenTime() != null && yesterday.getCloseTime() != null) {
+                    if (yesterday.getOpenTime().isAfter(yesterday.getCloseTime())) {
+                        if (currentTime.isBefore(yesterday.getCloseTime())) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     private void evictRestaurantMenu(Long restaurantId) {
         var menuCache = cacheManager.getCache("restaurantMenus");
         if (menuCache != null) {
@@ -231,6 +310,12 @@ public class RestaurantServiceImpl implements RestaurantService {
     }
 
     private RestaurantResponseDto toDto(Restaurant restaurant) {
+        boolean isOpenNow = restaurant.getStatus() == RestaurantStatus.OPEN
+                && isOpenAt(restaurant.getId(), ZonedDateTime.now());
+        return toDto(restaurant, isOpenNow);
+    }
+
+    private RestaurantResponseDto toDto(Restaurant restaurant, boolean isOpenNow) {
         return new RestaurantResponseDto(
                 restaurant.getId(),
                 restaurant.getOwner().getId(),
@@ -245,6 +330,7 @@ public class RestaurantServiceImpl implements RestaurantService {
                 restaurant.getLongitude(),
                 restaurant.getMinimumOrderAmount(),
                 restaurant.getStatus(),
+                isOpenNow,
                 restaurant.getAverageRating(),
                 restaurant.getDeliveryTimeMinutes()
         );

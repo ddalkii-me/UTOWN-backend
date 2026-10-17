@@ -41,4 +41,6 @@ public class DeliveryAssignment extends BaseEntity {
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
 
+    @Version
+    private Long version;
 }

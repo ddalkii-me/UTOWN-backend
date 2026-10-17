@@ -59,9 +59,17 @@ services:
       SERVER_ADDRESS: 0.0.0.0
       SOCKETIO_HOST: 0.0.0.0
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SOCKETIO_PORT: ${SOCKETIO_PORT:-9092}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
     ports:
       - "${APP_PORT:-8080}:8080"

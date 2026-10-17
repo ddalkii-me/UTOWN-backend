@@ -36,13 +36,38 @@ The UTown backend powers a multi-role food delivery platform servicing customers
 | **Security** | Spring Security, Stateless JWT (`jjwt` 0.12.6), BCrypt |
 | **Data & Persistence** | Spring Data JPA, Hibernate, MySQL Connector/J |
 | **Database** | MySQL 8.4 (with `utf8mb4` encoding and `Asia/Seoul` timezone) |
-| **Testing** | JUnit 5, Mockito, Spring Boot Test, H2 In-Memory DB |
+| **Caching & Rate Limiting** | Redis Cache, Advanced Search & Rate Limiter |
+| **Real-Time** | Socket.IO Notifications (`netty-socketio-core`) |
+| **Storage** | AWS S3 Storage (for media/images) |
+| **Documentation** | OpenAPI 3 / Swagger UI (`springdoc`) |
+| **Testing** | JUnit 5, Mockito, Spring Boot Test, H2 In-Memory DB, Testcontainers |
 | **Build Tool** | Apache Maven 3.9 (via `mvnw` wrapper) |
 | **Containerization** | Docker (Multi-stage Alpine build), Docker Compose v2+ |
 
 ---
 
 ## Architecture & Key Features
+
+### Architecture Overview
+The system relies on a scalable Spring Boot monolith supported by real-time WebSockets, persistent storage, and caching layers.
+
+```mermaid
+graph TD
+    Client[Web/Mobile Clients] --> API[Spring Boot REST API]
+    Client <--> Socket[Socket.IO Server]
+    
+    API --> Security[Spring Security & JWT]
+    API --> RateLimiter[Rate Limiter]
+    
+    API --> ServiceLayer[Business Logic]
+    ServiceLayer --> Repository[Spring Data JPA]
+    
+    Repository --> MySQL[(MySQL 8.4 Database)]
+    ServiceLayer --> Redis[(Redis Cache)]
+    ServiceLayer --> S3[AWS S3 Storage]
+    ServiceLayer --> Socket
+```
+*Note: The complete detailed Entity-Relationship Diagram can be found in `UTOWN_ERD.drawio` (which can be exported to image via draw.io).*
 
 * **Stateless Authentication (AuthN)**:
   * Primary identifier: User phone number (standardized with `+82` country code for South Korea).
@@ -56,6 +81,26 @@ The UTown backend powers a multi-role food delivery platform servicing customers
 * **Multi-Container Deployment**:
   * Isolated MySQL service and Spring Boot application orchestrated via Docker Compose.
   * Automated health checks to prevent database connection race conditions during startup.
+
+* **Order Lifecycle State Machine**:
+  * Centralized state transitions map with exhaustive validation.
+  * Ensures safe progression from checkout to delivery.
+  
+  ```mermaid
+  stateDiagram-v2
+      [*] --> PENDING
+      PENDING --> ACCEPTED
+      PENDING --> DECLINED
+      PENDING --> CANCELLED
+      ACCEPTED --> IN_PREPARATION
+      IN_PREPARATION --> READY_FOR_PICKUP
+      READY_FOR_PICKUP --> OUT_FOR_DELIVERY
+      OUT_FOR_DELIVERY --> DELIVERED
+      DELIVERED --> COMPLETED
+      DECLINED --> [*]
+      CANCELLED --> [*]
+      COMPLETED --> [*]
+  ```
 
 ---
 
@@ -89,6 +134,8 @@ cp .env.example .env
 | `APP_PORT` | `8080` | Port exposed by the Spring Boot container on the host |
 | `SERVER_ADDRESS` | `0.0.0.0` (Docker) / `127.0.0.1` (Local) | Server binding IP |
 | `SPRING_JPA_HIBERNATE_DDL_AUTO` | `update` | Hibernate schema management strategy |
+| `SOCKETIO_HOST` | `0.0.0.0` | Binding interface for the Socket.IO server |
+| `SOCKETIO_PORT` | `9092` | Port used by Socket.IO for real-time notifications |
 | `JWT_SECRET` | `404E635...` | Base64 or plaintext secret (must be >= 32 bytes) |
 | `JWT_EXPIRATION` | `86400000` | Access token lifespan in milliseconds (24 hours) |
 
@@ -125,6 +172,28 @@ docker compose down
 # Stop containers and remove persistent database volumes (Clean reset)
 docker compose down -v
 ```
+
+### Running with Demo Data Seeder (Demo Walkthrough)
+
+If you want to start the application with a pre-populated database (users, restaurants, menus, orders), you can enable the `demo` profile. The seeder is idempotent and will skip if it detects the admin user is already present.
+
+1. **Start the demo environment**: Run `SPRING_PROFILES_ACTIVE=demo docker compose up -d`
+2. **Access Swagger UI**: Navigate to [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+
+**Demo Accounts (Password for all: `password123`)**:
+- Admin: `admin@demo.com` (Phone: `01000000000`)
+- Restaurant Owner: `owner@demo.com` (Phone: `01022222222`)
+- Customer: `customer@demo.com` (Phone: `01011111111`)
+- Rider: `rider@demo.com` (Phone: `01033333333`)
+
+3. **Login as Customer**: 
+   - Expand `POST /api/auth/login` in Swagger
+   - Use payload: `{"phone": "01011111111", "password": "password123"}`
+   - Execute and copy the `token` from the response.
+4. **Authorize**: Scroll to the top of Swagger UI, click **Authorize**, paste your token, and click Login.
+5. **Create an Order**:
+   - Expand `POST /api/orders`
+   - You can now place an order for the pre-seeded restaurant and dishes.
 
 ---
 
@@ -207,6 +276,36 @@ If developing locally without Docker, you can connect to an existing MySQL insta
    ./mvnw spring-boot:run
    ```
 3. The server will bind to `http://127.0.0.1:8080`.
+
+---
+
+## Monitoring & Profiles
+
+### Profiles
+
+The application uses Spring Profiles to distinguish between environments. You can set the active profile via the `SPRING_PROFILES_ACTIVE` environment variable (defaults to `dev`).
+* **`dev` Profile:** Enables detailed SQL logging for debugging.
+* **`prod` Profile:** Disables SQL logging and enables strict security configurations.
+
+### Actuator & Metrics
+
+Spring Boot Actuator and Micrometer are integrated for application health monitoring and metrics.
+* **Health Check (`/actuator/health`):** Used by Docker Compose to verify application readiness. Publicly accessible.
+* **App Info (`/actuator/info`):** Publicly accessible application info.
+* **Prometheus Metrics (`/actuator/prometheus`):** Exposes application metrics (including custom business metrics like `orders.created` and `orders.status.changed`) for Prometheus scraping. Publicly accessible.
+* **Other Actuator Endpoints (`/actuator/**`):** Secured and requires the `ADMIN` role.
+
+---
+
+## API Documentation (Swagger)
+
+Interactive OpenAPI / Swagger documentation is available when the application is running. You can browse all available endpoints, explore schemas, and execute API requests directly from the browser.
+
+* **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+* **OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+
+> [!TIP]
+> After logging in via the `/api/auth/login` endpoint, click the **Authorize** button in Swagger UI and enter your JWT token to access secured endpoints.
 
 ---
 

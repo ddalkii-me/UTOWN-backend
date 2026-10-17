@@ -9,15 +9,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/users/{userId}/favorites")
 @RequiredArgsConstructor
+@Tag(name = "Favorite Restaurant", description = "API for managing favorite restaurants")
 public class FavoriteRestaurantController {
 
     private final FavoriteRestaurantService favoriteRestaurantService;
 
+    @Operation(summary = "Add favorite")
     @PostMapping("/{restaurantId}")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<FavoriteRestaurantResponseDto> addFavorite(
@@ -31,6 +35,7 @@ public class FavoriteRestaurantController {
         return ResponseEntity.status(201).body(response);
     }
 
+    @Operation(summary = "Remove favorite")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<List<FavoriteRestaurantResponseDto>> getFavorites(
@@ -42,6 +47,7 @@ public class FavoriteRestaurantController {
         );
     }
 
+    @Operation(summary = "Remove favorite")
     @DeleteMapping("/{restaurantId}")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CUSTOMER') and #userId == authentication.principal.id)")
     public ResponseEntity<Void> removeFavorite(
