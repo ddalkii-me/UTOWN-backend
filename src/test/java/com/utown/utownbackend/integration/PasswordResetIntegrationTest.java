@@ -27,8 +27,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +63,7 @@ class PasswordResetIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private EntityManager entityManager;
+    private PlatformTransactionManager transactionManager;
 
     @MockitoBean
     private SocketIONotificationService socketIONotificationService;
@@ -71,10 +72,6 @@ class PasswordResetIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        refreshTokenRepository.deleteAll();
-        authCodeRepository.deleteAll();
-        userRepository.deleteAll();
-
         user = new User();
         user.setEmail("reset-test@example.com");
         user.setPhone("+821011112222");
@@ -90,9 +87,16 @@ class PasswordResetIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        refreshTokenRepository.deleteAll();
-        authCodeRepository.deleteAll();
-        userRepository.deleteAll();
+        if (user != null && user.getId() != null) {
+            TransactionTemplate transactionTemplate =
+                    new TransactionTemplate(transactionManager);
+
+            transactionTemplate.executeWithoutResult(status -> {
+                refreshTokenRepository.deleteByUser(user);
+                authCodeRepository.deleteByUser(user);
+                userRepository.delete(user);
+            });
+        }
     }
 
     @Test

@@ -18,6 +18,8 @@ public interface AuthCodeRepository extends JpaRepository<AuthCode, Long> {
 
     Optional<AuthCode> findTopByUserAndPurposeAndUsedAtIsNullOrderByCreatedAtDesc(User user, AuthCodePurpose purpose);
 
+    void deleteByUser(User user);
+
     @Modifying
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Query("UPDATE AuthCode a SET a.attempts = a.attempts + 1 WHERE a.id = :id AND a.attempts < :maxAttempts")
@@ -27,4 +29,5 @@ public interface AuthCodeRepository extends JpaRepository<AuthCode, Long> {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Query("UPDATE AuthCode a SET a.attempts = a.attempts + 1 WHERE a.id = :id")
     void incrementAttempts(@Param("id") Long id);
+
 }
